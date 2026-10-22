@@ -1,6 +1,30 @@
+# Entornos virtuales
 .venv/
+venv/
+ENV/
+
+# Archivos de entorno y credenciales sensibles
+.env
+.env.*
+!.env.example
+
+# Cachés de Python y tests
 __pycache__/
 *.pyc
-.env
+*.pyo
 .pytest_cache/
+.coverage
+htmlcov/
+
+# Bases de datos y almacenamiento vectorial local
 chroma_db/
+
+# Editores e IDEs
+.idea/
+.vscode/
+*.swp
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
