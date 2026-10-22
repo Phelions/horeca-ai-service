@@ -1,0 +1,35 @@
+{
+  "extraer_pedido_horeca": {
+    "exitos": 3,
+    "intentos": 3,
+    "tasa_exito_porcentaje": 100.0,
+    "claves_esperadas": [
+      "items"
+    ],
+    "consistencia_robusta": true
+  },
+  "clasificar_urgencia_pedido": {
+    "exitos": 3,
+    "intentos": 3,
+    "tasa_exito_porcentaje": 100.0,
+    "claves_esperadas": [
+      "nivel_urgencia",
+      "horario_limite",
+      "categoria_insumo",
+      "justificacion"
+    ],
+    "consistencia_robusta": true
+  },
+  "resumen_orden_compra": {
+    "exitos": 3,
+    "intentos": 3,
+    "tasa_exito_porcentaje": 100.0,
+    "claves_esperadas": [
+      "total_insumos",
+      "resumen_ejecutivo",
+      "requiere_frio",
+      "alertas_calidad"
+    ],
+    "consistencia_robusta": true
+  }
+}
