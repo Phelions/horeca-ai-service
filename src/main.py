@@ -43,7 +43,7 @@ def main():
     Demuestra la extracción y normalización de un pedido informal de restaurante.
     """
     mensaje_ejemplo = (
-        "Hola don Carlos, para mañana necesitamos con urgencia 2 cajas de tomate limachino "
+        "Hola don Carlos, para mañanaaaa necesitamos con urgencia 2 cajas de tomate limachino "
         "bien firme, 3 sacos de harina panadera, unos 10 kilos de posta negra limpia "
         "y 2 bidones de lavaloza concentrado. Ah y si tiene palta hass, mándeme 1 caja. Gracias!"
     )
