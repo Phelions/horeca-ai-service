@@ -8,11 +8,11 @@ from dotenv import load_dotenv
 # Cargar variables de entorno
 load_dotenv()
 
-# Precios de referencia por token (Gemini 2.5 Flash / 1.5 Flash estándar)
-# Entrada: $0.075 por 1M tokens ($0.000000075 por token)
-# Salida:  $0.30  por 1M tokens ($0.000000300 por token)
-PRECIO_TOKEN_ENTRADA_DEFAULT = 0.000000075
-PRECIO_TOKEN_SALIDA_DEFAULT = 0.000000300
+# Precios oficiales de referencia (Gemini 3.8 Flash - Octubre 2026)
+# Entrada: $0.00075 por 1k tokens ($0.00000075 por token)
+# Salida:  $0.00375 por 1k tokens ($0.00000375 por token)
+PRECIO_TOKEN_ENTRADA_DEFAULT = 0.00000075
+PRECIO_TOKEN_SALIDA_DEFAULT = 0.00000375
 
 
 def armar_peticion(
@@ -35,7 +35,7 @@ def armar_peticion(
     if not api_key:
         raise ValueError("No se encontró GEMINI_API_KEY en las variables de entorno.")
 
-    modelo_final = modelo or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    modelo_final = modelo or os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{modelo_final}:generateContent?key={api_key}"
 
     body: Dict[str, Any] = {

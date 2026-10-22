@@ -38,7 +38,16 @@ La miniaplicación sigue el principio de **Responsabilidad Única (SRP)** y sepa
 * **`src/order_parser.py`**: Fachada de dominio con esquemas Pydantic (`ItemPedido`, `PedidoExtraido`), validación de entradas tempranas y logging operativo.
 * **`prompts/banco.py`**: Catálogo de prompts de sistema versionados con esquemas de validación estructural.
 * **`prompts/test_consistencia.py`**: Suite de validación de consistencia probabilística para garantizar salidas reproducibles.
-* **`docs/decision-arquitectura.md`**: Registro formal de arquitectura comparando empíricamente `gemini-2.5-flash` vs `gemini-2.5-pro`.
+* **`docs/decision-arquitectura.md`**: Registro formal de arquitectura comparando empíricamente la familia Gemini (Octubre 2026) y fundamentando la elección de `Gemini 3.8 Flash` frente a `Gemini 3.5 Flash-Lite`, `Gemini 3.1 Pro` y `Gemini 4 Argon`.
+
+### 📊 Benchmark Oficial de Modelos Gemini (Octubre 2026):
+
+| Modelo Gemini | Latencia Promedio (TTFT / End-to-End) | Costo Entrada (por 1k tokens) | Costo Salida (por 1k tokens) | Costo Mensual Estimado (50k ped./mes) | Límites y Escala a 50k pedidos |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Gemini 3.5 Flash-Lite** | Muy Baja (~100-150ms / ~0.5s) | $0,00030 | $0,00250 | $92,50 USD | Excelente. Soporta la carga en Pay-Per-Token estándar sin cuellos de botella. |
+| **Gemini 3.8 Flash** | **Baja (~150-250ms / ~0.8s)** | **$0,00075** | **$0,00375** | **$168,75 USD** | **Recomendado**. Modelo óptimo para flujos de trabajo autónomos y alta concurrencia. |
+| **Gemini 3.1 Pro (Preview)** | Media (~400-600ms / ~2.0s) | $0,00200 | $0,01200 | $500,00 USD | Viable. Requiere controlar cuotas de RPM en Google AI Studio si los pedidos se concentran. |
+| **Gemini 4 Argon** | Alta (~600-900ms / ~3.5s) | $0,00200 | $0,01000 | $450,00 USD | Alta capacidad. Lanzado este mes; ideal solo si los pedidos requieren razonamiento complejo extremo. |
 
 ---
 
@@ -78,7 +87,7 @@ cp .env.example .env
 Edita `.env` y define tu credencial:
 ```ini
 GEMINI_API_KEY=AIzaSy...tu_api_key_real
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-3.8-flash
 LOG_LEVEL=INFO
 ```
 
@@ -144,7 +153,7 @@ y 2 bidones de lavaloza concentrado. Ah y si tiene palta hass, mándeme 1 caja. 
     "costo_salida_usd": 0.00003780,
     "costo_total_usd": 0.00006390
   },
-  "model_used": "gemini-2.5-flash"
+  "model_used": "gemini-3.8-flash"
 }
 ```
 

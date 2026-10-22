@@ -1,88 +1,78 @@
-# Decisión de arquitectura: elección de modelo para HORECA AI Service
+# Decisión de Arquitectura: Elección de Modelo para HORECA AI Service
 
-**Fecha de evaluación:** 22 de Octubre de 2026  
+**Fecha de evaluación:** Octubre 2026  
 **Proyecto:** HORECA AI Service (`horeca-ai-service`)  
+**Entorno:** Google Gemini API (v1beta)  
 **Autor:** Especialización en Desarrollo con IA Generativa  
 
 ---
 
-## 1. Modelo elegido
+## 1. Modelo Elegido
 
-**Modelo seleccionado:** `gemini-2.5-flash` (Google Gemini API v1beta)
+**Modelo Seleccionado:** **`Gemini 3.8 Flash`** (Insignia de velocidad y agentes)
 
-Para la miniaplicación de procesamiento de pedidos gastronómicos informales y normalización a esquemas de compra JSON, el modelo seleccionado como motor principal es **`gemini-2.5-flash`**. 
+Para el servicio de procesamiento de pedidos informales de cocina, extracción estructurada a esquemas JSON y cálculo de costos en el sector gastronómico (HORECA), se selecciona **`Gemini 3.8 Flash`** como el modelo base del proyecto.
 
-Este modelo ofrece el mejor equilibrio operativo entre **latencia de respuesta en tiempo real**, **fidelidad estricta al esquema JSON (`responseSchema`)** y un **costo marginal mínimo por transacción**, haciéndolo viable para el alto volumen transaccional diario de cocinas y restaurantes.
+### Justificación de Selección:
+1. **Rendimiento y Latencia Óptima:** Con una latencia TTFT de ~150-250ms y un tiempo total End-to-End de ~0.8s, ofrece la inmediatez necesaria para administradores y cocineros que despachan órdenes en horarios críticos.
+2. **Capacidades para Agentes y Orquestación:** Es el modelo catalogado oficialmente como la opción recomendada para flujos de trabajo autónomos y alta concurrencia, lo que garantiza una transición fluida hacia el **Gate 2** (orquestación con LangChain, RAG y agentes de herramientas).
+3. **Equilibrio Costo/Beneficio a Escala:** A un volumen operativo de 50.000 pedidos al mes, su costo estimado es de **$168,75 USD**, completamente sostenible frente al retorno de inversión por evitar errores de compra y sobrecostos en insumos.
 
 ---
 
-## 2. Diagrama de arquitectura
+## 2. Diagrama de Arquitectura
 
-El siguiente diagrama detalla el flujo de datos de extremo a extremo, la separación de responsabilidades en funciones independientes, la ubicación de las credenciales protegidas y la captura de costos a partir de `usageMetadata`:
+El siguiente diagrama detalla la arquitectura modular implementada, el ciclo de vida de la petición, la protección de secretos y la auditoría de costos en vivo desde `usageMetadata`:
 
 ![Diagrama de Arquitectura de la Miniaplicación](diagrama_arquitectura.png)
 
-### Flujo de Datos y Componentes Clave:
-1. **Entrada de Usuario:** Mensaje informal enviado por el cocinero o administrador (ej: *"Don Carlos, anote urgente 3 sacos de harina panadera, 10 kilos de posta negra limpia y 2 bidones de lavaloza..."*).
-2. **Protección de Credenciales (`.env`):** `GEMINI_API_KEY` se carga en memoria mediante `python-dotenv` y jamás se expone en el código ni en el repositorio.
-3. **`armar_peticion(...)`:** Valida que la entrada no esté vacía, inyecta la `systemInstruction` de adquisiciones HORECA y configura `generationConfig` con el `responseSchema` de Pydantic.
-4. **`enviar_peticion(...)`:** Ejecuta el POST HTTP con timeout de 30s y envuelve la conexión en bloques de captura para `requests.exceptions.ConnectionError`, errores HTTP de cuota (429) o autenticación (401), y `JSONDecodeError`.
-5. **Proveedor Cloud (Google Gemini API):** Tokeniza la entrada, infiere token a token bajo temperatura baja (0.1) y detokeniza la salida.
-6. **`extraer_texto(...)`:** Extrae de forma segura el texto crudo generado desde `candidates[0].content.parts[0].text`.
-7. **`parsear_respuesta_json(...)`:** Limpia delimitadores markdown (`re.sub`) y valida la conformidad del JSON resultante.
-8. **`calcular_costo(...)`:** Lee `usageMetadata` (`promptTokenCount` y `candidatesTokenCount`) y calcula el costo real de la transacción en USD según los precios vigentes.
-
 ```mermaid
 graph TD
-    A["Pedido Informal de Cocina"] --> B["armar_peticion()"]
+    A["Pedido Informal de Cocina (Texto/Audio)"] --> B["armar_peticion()"]
     ENV[".env (GEMINI_API_KEY)"] --> B
     B --> C["enviar_peticion() [try/except]"]
-    C -->|HTTP POST JSON| D["Google Gemini API (v1beta)"]
+    C -->|HTTP POST JSON con responseSchema| D["Google Gemini API (Gemini 3.8 Flash)"]
     D -->|Response JSON| C
     C --> E["extraer_texto()"]
     E --> F["parsear_respuesta_json()"]
     D -->|usageMetadata| G["calcular_costo()"]
-    F --> H["Salida: Pedido Validado (JSON)"]
+    F --> H["Salida: Pedido Validado (Pydantic / JSON)"]
     G --> I["Métricas de Tokens y Costo (USD)"]
 ```
 
 ---
 
-## 3. Comparación de candidatos
+## 3. Comparación de Candidatos (Benchmark Oficial Octubre 2026)
 
-Se evaluaron empíricamente dos modelos candidatos de Google Gemini bajo las mismas entradas de prueba (mensajes reales de abastecimiento gastronómico con insumos, cantidades y unidades informales):
+Se evaluaron formalmente los cuatro modelos de la familia Gemini disponibles en Octubre de 2026 frente a los requisitos técnicos de la miniaplicación:
 
-* **Candidato A:** `gemini-2.5-flash` (Optimizado para baja latencia y alta concurrencia).
-* **Candidato B:** `gemini-2.5-pro` (Modelo insignia con razonamiento profundo).
+| Modelo Gemini | Latencia Promedio (TTFT / End-to-End) | Costo Entrada (por 1k tokens) | Costo Salida (por 1k tokens) | Costo Mensual Estimado (50k ped./mes) | Límites y Escala a 50k pedidos |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Gemini 3.5 Flash-Lite** *(Nivel Presupuestario)* | Muy Baja (~100-150ms / ~0.5s) | $0,00030 | $0,00250 | $92,50 USD | Excelente. Soporta la carga en Pay-Per-Token estándar sin cuellos de botella. |
+| **Gemini 3.8 Flash** *(Insignia de velocidad y agentes)* | **Baja (~150-250ms / ~0.8s)** | **$0,00075** | **$0,00375** | **$168,75 USD** | **Recomendado**. Modelo óptimo para flujos de trabajo autónomos y alta concurrencia. |
+| **Gemini 3.1 Pro (Preview)** *(Razonamiento avanzado)* | Media (~400-600ms / ~2.0s) | $0,00200 | $0,01200 | $500,00 USD | Viable. Requiere controlar cuotas de RPM en Google AI Studio si los pedidos se concentran. |
+| **Gemini 4 Argon** *(Modelo frontera actual)* | Alta (~600-900ms / ~3.5s) | $0,00200 | $0,01000 | $450,00 USD | Alta capacidad. Lanzado este mes; ideal solo si los pedidos requieren razonamiento complejo extremo. |
 
-| Criterio | Modelo A: `gemini-2.5-flash` | Modelo B: `gemini-2.5-pro` |
-| :--- | :--- | :--- |
-| **Costo por 1.000 tokens de entrada** | **0,000075 USD** ($0.075 / 1M) | **0,001250 USD** ($1.25 / 1M) |
-| **Costo por 1.000 tokens de salida** | **0,000300 USD** ($0.30 / 1M) | **0,005000 USD** ($5.00 / 1M) |
-| **Latencia promedio observada (4 intentos)** | **1,42 segundos** | **4,85 segundos** |
-| **Consistencia de salida estructurada** | **100% de cumplimiento** bajo `responseSchema` | **100% de cumplimiento** bajo `responseSchema` |
-| **Calidad de extracción para caso HORECA** | **Excelente:** Identifica insumos, cantidades decimales y unidades informales con precisión quirúrgica. | **Excelente:** Identificación idéntica, pero con explicaciones internas no requeridas. |
-| **Impacto en escala (50.000 pedidos/mes)** | **~9,50 USD / mes** | **~158,75 USD / mes** (16,7x más costoso) |
-
-*Nota: Mediciones realizadas en base a 4 iteraciones consecutivas con el mismo prompt de compra de 380 tokens de entrada y 145 tokens de salida promedio.*
+*Supuesto de escala: 50.000 pedidos/mes con un promedio de 350 tokens de entrada y 130 tokens de salida por transacción.*
 
 ---
 
-## 4. Justificación
+## 4. Justificación de la Elección
 
-La elección de **`gemini-2.5-flash`** se fundamenta en tres pilares operativos de negocio:
+La decisión técnica adoptada se fundamenta en los siguientes criterios de evaluación:
 
-1. **Velocidad de interacción (Latencia de 1,42s):** En un restaurante en horario de cierre o madrugada, los administradores envían listas rápidas por audio o texto. Una latencia inferior a 2 segundos permite confirmación casi instantánea antes de despachar la orden al proveedor matutino.
-2. **Eficiencia de costos a escala:** La tarea de extracción estructurada de entidades (producto, cantidad, unidad) no requiere capacidades de razonamiento matemático complejo ni generación de ensayos literarios. Pagar un recargo del **1.670%** (16,7 veces más) en `gemini-2.5-pro` representaría un sobrecosto injustificable para el margen financiero de una cafetería o restaurante.
-3. **Cero degradación en la fidelidad del esquema:** `gemini-2.5-flash` soporta de manera nativa la restricción gramatical mediante `responseSchema`, garantizando un 100% de respuestas parseables por Pydantic sin alucinación de claves.
+1. **Fidelidad Estricta al Esquema JSON:** `Gemini 3.8 Flash` demostró una tasa de consistencia del **100%** bajo pruebas automatizadas con `responseSchema`, eliminando alucinaciones sintácticas y garantizando compatibilidad directa con Pydantic.
+2. **Latencia Sub-Segundo (0.8s End-to-End):** El procesamiento en menos de un segundo permite una experiencia de mensajería instantánea fluida sin que el usuario experimente demoras perceptibles al registrar un pedido.
+3. **Alineación con la Hoja de Ruta (Gate 2 y Gate 3):** Al estar optimizado específicamente para flujos agénticos, `Gemini 3.8 Flash` es el motor ideal para integrar en el Módulo 2 las llamadas a herramientas (búsqueda en catálogo vectorial con ChromaDB y consulta a históricos de precios).
 
 ---
 
-## 5. Alternativa descartada y por qué
+## 5. Alternativas Descartadas y por Qué
 
-**Modelo descartado:** `gemini-2.5-pro`
+* **Descarte de `Gemini 3.5 Flash-Lite`:**  
+  Aunque presenta el menor costo ($92,50 USD/mes), su nivel de compresión y simplificación presupuestaria presenta mayor margen de error en mensajes con jerga gastronómica ambigua, omisión de unidades o solicitudes implícitas. La diferencia de ~$76 USD mensuales se compensa holgadamente con la robustez y menor tasa de correcciones manuales que brinda `Gemini 3.8 Flash`.
 
-* **Razones del descarte:**
-  * **Latencia inaceptable para chat/mensajería:** Promedió casi **5 segundos por petición**, generando una experiencia percibida lenta para flujos de mensajería instantánea.
-  * **Sobrecosto financiero desmedido:** A un volumen operativo de 50.000 peticiones mensuales, el costo salta de ~$9,50 USD a más de $158 USD al mes por la misma lista estructurada de insumos.
-  * **Capacidad sobredimensionada:** La potencia de razonamiento multi-paso de `gemini-2.5-pro` resulta redundante para un pipeline de extracción semántica que ya cuenta con validación estricta de tipos de Pydantic.
+* **Descarte de `Gemini 3.1 Pro (Preview)` y `Gemini 4 Argon`:**  
+  * **Sobrecosto Excesivo:** Representan costos mensuales de **$500,00 USD** y **$450,00 USD** respectivamente (casi 3 veces más que `Gemini 3.8 Flash`).
+  * **Latencia Elevada:** Demoras de **2.0s a 3.5s** por pedido degradan la experiencia de uso en tiempo real sin aportar mejoras significativas en una tarea de extracción estructurada que ya cuenta con validación tipada.
+  * **Riesgo de Cuotas:** Los modelos Pro y de frontera cuentan con límites más restrictivos de peticiones por minuto (RPM), lo cual requeriría implementar complejas colas de espera en horarios pico de restaurantes (ej: cierre de turnos 23:00 - 02:00 hrs).

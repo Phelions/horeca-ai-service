@@ -11,9 +11,9 @@ from google.genai.errors import APIError
 # Cargar variables de entorno desde .env
 load_dotenv()
 
-# Precios oficiales de referencia (Gemini 2.5 Flash)
-PRECIO_TOKEN_ENTRADA_USD = 0.000000075  # $0.075 por 1M tokens
-PRECIO_TOKEN_SALIDA_USD = 0.000000300   # $0.30 por 1M tokens
+# Precios oficiales de referencia (Gemini 3.8 Flash - Octubre 2026)
+PRECIO_TOKEN_ENTRADA_USD = 0.00000075  # $0.00075 por 1k tokens
+PRECIO_TOKEN_SALIDA_USD = 0.00000375   # $0.00375 por 1k tokens
 
 
 # ==========================================
