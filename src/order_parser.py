@@ -1,6 +1,7 @@
 import os
 import json
-from typing import List, Optional
+import re
+from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from google import genai
@@ -9,6 +10,11 @@ from google.genai.errors import APIError
 
 # Cargar variables de entorno desde .env
 load_dotenv()
+
+# Precios oficiales de referencia (Gemini 2.5 Flash)
+PRECIO_TOKEN_ENTRADA_USD = 0.000000075  # $0.075 por 1M tokens
+PRECIO_TOKEN_SALIDA_USD = 0.000000300   # $0.30 por 1M tokens
+
 
 # ==========================================
 # 1. Esquemas de Validación (Pydantic)
@@ -29,6 +35,7 @@ class ItemPedido(BaseModel):
         description="Notas adicionales como estado, maduración, marca o corte específico si se menciona."
     )
 
+
 class PedidoExtraido(BaseModel):
     """Estructura completa de la orden de compra normalizada."""
     items: List[ItemPedido] = Field(
@@ -40,7 +47,11 @@ class PedidoExtraido(BaseModel):
 # 2. Clase Principal del Parser
 # ==========================================
 class OrderParser:
-    def __init__(self):
+    """
+    Parser especializado para transformar mensajes informales de cocina (HORECA)
+    en órdenes de compra estructuradas y validadas con Pydantic.
+    """
+    def __init__(self, model_name: Optional[str] = None):
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError(
@@ -48,7 +59,7 @@ class OrderParser:
                 "Verifica tu archivo .env"
             )
         
-        self.model_name = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        self.model_name = model_name or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.client = genai.Client(api_key=api_key)
         
         self.system_instruction = (
@@ -60,43 +71,71 @@ class OrderParser:
             "lógica o usa 'unidad'. Extrae únicamente los insumos reales que constituyen una compra."
         )
 
-    def parsear_texto(self, texto_pedido: str) -> dict:
+    def validar_entrada(self, texto_pedido: str) -> None:
+        """Valida que la entrada del usuario no esté vacía ni contenga tipos inválidos."""
+        if not isinstance(texto_pedido, str):
+            raise ValueError(f"La entrada debe ser de tipo str, se recibió: {type(texto_pedido).__name__}")
+        if not texto_pedido or not texto_pedido.strip():
+            raise ValueError("El texto del pedido no puede estar vacío ni contener solo espacios.")
+
+    def calcular_costo_tokens(self, prompt_tokens: int, candidates_tokens: int) -> Dict[str, Any]:
+        """Calcula el costo económico estimado de la inferencia."""
+        costo_in = prompt_tokens * PRECIO_TOKEN_ENTRADA_USD
+        costo_out = candidates_tokens * PRECIO_TOKEN_SALIDA_USD
+        costo_total = costo_in + costo_out
+        return {
+            "prompt_tokens": prompt_tokens,
+            "candidates_tokens": candidates_tokens,
+            "total_tokens": prompt_tokens + candidates_tokens,
+            "costo_entrada_usd": round(costo_in, 8),
+            "costo_salida_usd": round(costo_out, 8),
+            "costo_total_usd": round(costo_total, 8)
+        }
+
+    def parsear_texto(self, texto_pedido: str) -> Dict[str, Any]:
         """
         Envía el texto informal a Gemini forzando salida JSON estructurada
-        según el esquema PedidoExtraido y captura métricas de tokens.
+        según el esquema PedidoExtraido y audita métricas de tokens y costos.
         """
+        # Validación temprana (Criterio de Calidad de Código U1.3 / U1.4)
+        self.validar_entrada(texto_pedido)
+
         try:
             config = types.GenerateContentConfig(
                 system_instruction=self.system_instruction,
                 response_mime_type="application/json",
                 response_schema=PedidoExtraido,
-                temperature=0.1,  # Baja temperatura para máxima consistencia y fidelidad
+                temperature=0.1,  # Baja temperatura para máxima fidelidad y consistencia
             )
 
             response = self.client.models.generate_content(
                 model=self.model_name,
-                contents=f"Extrae los insumos del siguiente pedido:\n\n\"{texto_pedido}\"",
+                contents=f"Extrae los insumos del siguiente pedido:\n\n\"{texto_pedido.strip()}\"",
                 config=config,
             )
 
             # Extraer uso de tokens para auditoría de costos
             usage = response.usage_metadata
-            token_metrics = {
-                "prompt_tokens": getattr(usage, "prompt_token_count", 0),
-                "candidates_tokens": getattr(usage, "candidates_token_count", 0),
-                "total_tokens": getattr(usage, "total_token_count", 0),
-            }
+            p_tokens = getattr(usage, "prompt_token_count", 0) or 0
+            c_tokens = getattr(usage, "candidates_token_count", 0) or 0
+            metricas_costo = self.calcular_costo_tokens(p_tokens, c_tokens)
 
-            # Si el SDK ya parseó el objeto con el esquema Pydantic
+            # Interpretar salida structured
             if response.parsed:
                 datos_pedido = response.parsed.model_dump()
             else:
-                datos_pedido = json.loads(response.text)
+                texto_limpio = response.text.strip()
+                texto_limpio = re.sub(r"^```(?:json)?\s*", "", texto_limpio)
+                texto_limpio = re.sub(r"\s*```$", "", texto_limpio)
+                datos_pedido = json.loads(texto_limpio)
+
+            # Validación adicional con Pydantic si vino por texto crudo
+            validado = PedidoExtraido(**datos_pedido).model_dump()
 
             return {
                 "status": "success",
-                "pedido": datos_pedido,
-                "token_metrics": token_metrics,
+                "pedido": validado,
+                "token_metrics": metricas_costo,
                 "model_used": self.model_name
             }
 
@@ -104,13 +143,19 @@ class OrderParser:
             return {
                 "status": "error",
                 "error_type": "Gemini_API_Error",
-                "message": str(api_err)
+                "message": f"Error devuelto por la API del proveedor: {api_err}"
+            }
+        except json.JSONDecodeError as json_err:
+            return {
+                "status": "error",
+                "error_type": "JSON_Decode_Error",
+                "message": f"No se pudo decodificar la salida como JSON válido: {json_err}"
             }
         except Exception as e:
             return {
                 "status": "error",
                 "error_type": "Unexpected_Error",
-                "message": str(e)
+                "message": f"Falla inesperada durante el procesamiento: {e}"
             }
 
 
@@ -118,7 +163,6 @@ class OrderParser:
 # 3. Prueba de Ejecución Local
 # ==========================================
 if __name__ == "__main__":
-    # Mensaje informal típico de un restaurante
     mensaje_ejemplo = (
         "Hola don Carlos, para mañana necesitamos con urgencia 2 cajas de tomate limachino "
         "bien firme, 3 sacos de harina panadera, unos 10 kilos de posta negra limpia "
@@ -126,12 +170,12 @@ if __name__ == "__main__":
     )
 
     print("=" * 60)
-    print("Iniciando extracción con Gemini...")
+    print("Iniciando extracción con Gemini (OrderParser HORECA)...")
     print(f"Mensaje de entrada:\n{mensaje_ejemplo}")
     print("=" * 60)
 
     parser = OrderParser()
     resultado = parser.parsear_texto(mensaje_ejemplo)
 
-    print("\nResultado estructurado:")
+    print("\nResultado estructurado y métricas:")
     print(json.dumps(resultado, indent=2, ensure_ascii=False))
