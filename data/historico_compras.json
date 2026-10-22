@@ -1,6 +1,0 @@
-[
-  {"sku": "ABA-01", "nombre": "Aceite Maravilla Granel", "ultimo_precio": 11600, "fecha_ultima_compra": "2026-09-15"},
-  {"sku": "CAR-01", "nombre": "Posta Negra Vacuno", "ultimo_precio": 37500, "fecha_ultima_compra": "2026-09-20"},
-  {"sku": "VER-01", "nombre": "Tomate Limachino Primera", "ultimo_precio": 18000, "fecha_ultima_compra": "2026-09-28"},
-  {"sku": "ABA-02", "nombre": "Harina Panadera Flor", "ultimo_precio": 16500, "fecha_ultima_compra": "2026-09-18"}
-]

@@ -29,6 +29,7 @@ La miniaplicación sigue el principio de **Responsabilidad Única (SRP)** y sepa
 ![Diagrama de Arquitectura de la Miniaplicación](docs/diagrama_arquitectura.png)
 
 ### Componentes Principales:
+* **`src/main.py`**: Punto de entrada principal ("main") ejecutable de la miniaplicación para demostración y ejecución directa del Gate 1.
 * **`src/consumo_api.py`**: Módulo base con las funciones puras requeridas por la arquitectura:
   * `armar_peticion(...)`: Inyecta `systemInstruction`, payloads y configuración de `responseSchema`.
   * `enviar_peticion(...)`: Ejecuta el POST HTTP con timeout y manejo especializado de excepciones (conexión, 401, 429).
@@ -95,8 +96,12 @@ LOG_LEVEL=INFO
 
 ## 🚀 4. Modo de Uso y Ejemplos de Ejecución
 
-### Ejecución Directa del Extractor:
+### Ejecución de la Miniaplicación:
 ```bash
+# Punto de entrada principal (Gate 1):
+python src/main.py
+
+# O también mediante ejecución directa del módulo:
 python src/order_parser.py
 ```
 
