@@ -28,17 +28,43 @@ Para no saturar la cuota gratuita de Google AI Studio (error HTTP 429 de límite
 de peticiones por minuto).
 """
 
+# ==============================================================================
+# IMPORTACIÓN DE LIBRERÍAS (¿Para qué sirve cada una?)
+# ==============================================================================
+
+# 'os' (Operating System): Nos permite consultar variables y rutas del sistema operativo.
 import os
+
+# 'sys' (System Parameters & Functions): Controla aspectos internos del intérprete de Python.
+# Lo usamos aquí para indicarle a Python dónde está la carpeta raíz del proyecto (sys.path.insert)
+# de modo que podamos hacer 'from src...' sin errores, sin importar desde qué carpeta ejecutes el comando.
 import sys
+
+# 'time': Funciones de fecha y medición de tiempo.
+# Usamos 'time.sleep()' para hacer una pausa prudente entre llamadas a la IA y no saturar
+# la cuota gratuita de Google AI Studio (evitando el molesto error HTTP 429 de demasiadas peticiones).
 import time
+
+# 'json' (JavaScript Object Notation): Nos permite manipular datos estructurados.
+# Lo usamos para guardar el reporte final con los porcentajes de consistencia en 'prompts/registro_resultados.json'.
 import json
+
+# 'pathlib.Path': Permite manejar rutas de archivos de forma moderna y compatible con Windows, Mac y Linux.
+# Lo usamos para calcular dinámicamente la ubicación exacta de la raíz del proyecto.
 from pathlib import Path
 
-# Añadir la carpeta raíz del proyecto para poder importar módulos de 'src'
+# Añadir la carpeta raíz del proyecto a la lista de búsqueda de Python
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
+# Importamos las 4 funciones modulares de nuestro propio cliente HTTP (creadas en src/consumo_api.py):
+# - armar_peticion: Construye la URL y el cuerpo del mensaje para la API.
+# - enviar_peticion: Hace la llamada HTTP real por internet y atrapa caídas de red o claves inválidas.
+# - extraer_texto: Extrae el texto limpio de la respuesta de Gemini sin metadata técnica.
+# - parsear_respuesta_json: Convierte el texto JSON en un diccionario de Python y elimina bloques markdown.
 from src.consumo_api import armar_peticion, enviar_peticion, extraer_texto, parsear_respuesta_json
+
+# Importamos la lista de prompts oficiales desde prompts/banco.py para ponerlos a prueba uno a uno
 from prompts.banco import BANCO_DE_PROMPTS
 
 

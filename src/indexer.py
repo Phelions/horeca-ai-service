@@ -30,17 +30,51 @@ que se refiere a "Posta Negra Vacuno", o si pide "tomate ensalada" encuentra
   Entre más cercano a 1.0 sea el resultado, más parecidos son en significado.
 """
 
+# ==============================================================================
+# IMPORTACIÓN DE LIBRERÍAS (¿Para qué sirve cada una?)
+# ==============================================================================
+
+# 'os' (Operating System): Nos permite consultar y operar sobre el sistema operativo
+# (por ejemplo, comprobar si existen directorios en el disco o leer variables de entorno).
 import os
+
+# 'json' (JavaScript Object Notation): Permite leer y escribir archivos de datos estructurados.
+# Lo usamos para abrir el catálogo maestro de proveedores ('data/catalogo.json') y convertirlo en objetos Python.
 import json
+
+# 'pathlib.Path': Permite manipular rutas de archivos y carpetas de manera moderna y limpia,
+# asegurando que el código funcione igual en Windows, Linux o macOS sin problemas de barras inclinadas.
 from pathlib import Path
+
+# 'typing': Ayuda a documentar qué tipos de datos reciben y retornan las funciones:
+# - List: Una lista ordenada de elementos (ej: una lista de productos encontrados).
+# - Dict: Un diccionario de datos con claves y valores (ej: un producto con su precio y categoría).
+# - Any: Cualquier tipo de dato cuando puede ser flexible.
+# - Optional: Un dato que puede estar presente o ser nulo (None).
 from typing import List, Dict, Any, Optional
+
+# 'dotenv': Lee el archivo oculto '.env' en la raíz y carga las contraseñas secretas en el sistema,
+# protegiendo tu clave GEMINI_API_KEY para que no quede expuesta.
 from dotenv import load_dotenv
+
+# 'chromadb': Es una base de datos vectorial local (corre directo en tu máquina sin instalar servidores externos).
+# A diferencia de una base de datos tradicional que busca palabras exactas, ChromaDB guarda los "vectores"
+# (coordenadas matemáticas) de los productos y permite encontrar coincidencias por significado semántico.
 import chromadb
+
+# 'Settings': Objeto de configuración de ChromaDB para indicarle dónde almacenar los datos físicamente
+# en el disco duro y ajustar opciones de persistencia.
 from chromadb.config import Settings
+
+# 'google.genai': SDK oficial de Google que conecta tu código con la plataforma Gemini.
+# Aquí lo usamos para invocar el modelo de 'embeddings' que convierte textos de productos en listas de números.
 from google import genai
+
+# 'APIError': Es el tipo de error específico que envía Google si la petición a su servidor falla
+# (por ejemplo si la clave no es válida o se cortó la conexión), permitiéndonos atrapar el error sin que el programa colapse.
 from google.genai.errors import APIError
 
-# Cargar variables de entorno desde el archivo .env
+# Cargar las variables del archivo .env al sistema operativo
 load_dotenv()
 
 

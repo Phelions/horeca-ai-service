@@ -27,14 +27,47 @@ que la respuesta cumpla obligatoriamente con el esquema definido con Pydantic
 o párrafos sueltos.
 """
 
+# ==============================================================================
+# IMPORTACIÓN DE LIBRERÍAS (¿Para qué sirve cada una?)
+# ==============================================================================
+
+# 'os' (Operating System): Nos permite interactuar con el sistema operativo de la máquina.
+# Lo usamos aquí para leer variables de entorno (como la clave secreta GEMINI_API_KEY).
 import os
+
+# 'json' (JavaScript Object Notation): Librería estándar para manipular datos en formato JSON.
+# La usamos para convertir cadenas de texto en diccionarios de Python (json.loads) y viceversa.
 import json
+
+# 're' (Regular Expressions): Permite buscar, filtrar y reemplazar patrones de texto avanzados.
+# Lo usamos para limpiar posibles bloques de código markdown (como ```json) que devuelva la IA.
 import re
+
+# 'typing': Herramientas de Python para documentar qué tipos de datos esperan y devuelven las funciones.
+# - List: Para indicar que una variable es una lista de elementos (ej: List[ItemPedido]).
+# - Optional: Para indicar que un campo puede tener un valor o puede ser nulo/None.
+# - Dict: Para indicar diccionarios con pares clave-valor (ej: Dict[str, Any]).
+# - Any: Para representar cualquier tipo de dato cuando la estructura puede ser variada.
 from typing import List, Optional, Dict, Any
+
+# 'dotenv': Lee el archivo oculto '.env' en la raíz del proyecto y carga sus valores
+# como variables de entorno del sistema, evitando dejar contraseñas escritas en el código.
 from dotenv import load_dotenv
+
+# 'pydantic': La librería más popular de Python para validación de datos y tipado estricto.
+# - BaseModel: La clase base para crear nuestros propios 'moldes' de datos (esquemas).
+# - Field: Permite añadir descripciones y reglas a cada campo para que Gemini entienda qué extraer.
 from pydantic import BaseModel, Field
+
+# 'google.genai': El SDK oficial y moderno de Google para conectarse con la familia de modelos Gemini.
 from google import genai
+
+# 'types': Contiene los tipos y configuraciones oficiales de Google GenAI (como GenerateContentConfig
+# para configurar la temperatura y forzar el formato de salida JSON).
 from google.genai import types
+
+# 'APIError': La clase de excepción que lanza Google cuando una llamada a su API falla
+# (por ejemplo, si la clave no tiene permisos o se superó el límite de uso gratuito).
 from google.genai.errors import APIError
 
 # Cargar las credenciales y variables guardadas en el archivo .env

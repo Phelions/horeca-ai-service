@@ -20,10 +20,39 @@ regresiones y cumpla con todos los criterios críticos no compensables del Gate 
 6. Manejo de Errores HTTP: Simular claves inválidas (401) y límites de cuota (429).
 """
 
+# ==============================================================================
+# IMPORTACIÓN DE LIBRERÍAS (¿Para qué sirve cada una?)
+# ==============================================================================
+
+# 'pytest': El framework estándar y más popular de Python para pruebas automatizadas.
+# Nos permite ejecutar suites de tests, comprobar que el resultado sea el esperado (assert)
+# y verificar que el código lance las excepciones correctas cuando recibe datos malos (pytest.raises).
 import pytest
+
+# 'os' (Operating System): Nos permite interactuar con el entorno del sistema.
+# En los tests lo usamos para inyectar claves falsas de prueba (os.environ['GEMINI_API_KEY'] = 'fake_key'),
+# asegurando que los tests corran de forma aislada sin requerir credenciales reales de Google.
 import os
+
+# 'unittest.mock': La herramienta nativa de Python para pruebas con "dobles de prueba" (simulaciones):
+# - 'patch': Reemplaza temporalmente una función o conexión real (ej: requests.post o el cliente de Google)
+#   por una versión falsa durante el test, evitando hacer llamadas reales por internet.
+# - 'MagicMock': Un objeto simulado que responde lo que nosotros le digamos (ej: imita una respuesta HTTP 200, 401 o 429),
+#   permitiendo probar cómo reacciona el sistema ante caídas de internet sin gastar dinero ni depender de Google.
 from unittest.mock import patch, MagicMock
+
+# Importamos las clases de nuestro dominio desde 'src/order_parser.py':
+# - OrderParser: El orquestador principal que toma el mensaje informal de cocina y devuelve el pedido limpio.
+# - ItemPedido: El modelo Pydantic que valida cada producto (nombre, cantidad, unidad, notas).
+# - PedidoExtraido: El modelo contenedor con la lista de insumos y el resumen del pedido.
 from src.order_parser import OrderParser, ItemPedido, PedidoExtraido
+
+# Importamos las funciones atómicas del cliente de API desde 'src/consumo_api.py':
+# - armar_peticion: Para probar que arme la estructura JSON correcta.
+# - extraer_texto: Para probar la extracción de texto ignorando la metadata técnica.
+# - parsear_respuesta_json: Para comprobar que limpie bloques markdown como ```json.
+# - calcular_costo: Para verificar con precisión matemática el cálculo de costos en dólares por token.
+# - PRECIO_TOKEN_ENTRADA_DEFAULT / PRECIO_TOKEN_SALIDA_DEFAULT: Las tarifas oficiales de referencia de Gemini 3.8 Flash.
 from src.consumo_api import (
     armar_peticion,
     extraer_texto,

@@ -24,6 +24,14 @@ Cada elemento del banco contiene:
    que no devuelva texto libre, sino un objeto estructurado.
 """
 
+# ==============================================================================
+# IMPORTACIÓN DE LIBRERÍAS
+# ==============================================================================
+# ¿Por qué este archivo no tiene 'import' ni 'from'?
+# Porque está diseñado usando 100% estructuras nativas de Python (listas y diccionarios).
+# Esto es una excelente práctica de diseño de software: mantiene las plantillas de prompts
+# completamente limpias, portables y desacopladas de cualquier framework o librería externa.
+
 BANCO_DE_PROMPTS = [
     {
         "nombre": "extraer_pedido_horeca",

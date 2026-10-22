@@ -28,14 +28,38 @@ de sistema en un canal (`systemInstruction`) y la pregunta en otro (`contents`),
 garantizando además la restricción de esquema con `responseSchema`.
 """
 
+# ==============================================================================
+# IMPORTACIÓN DE LIBRERÍAS (¿Para qué sirve cada una?)
+# ==============================================================================
+
+# 'os' (Operating System): Nos permite comunicarnos con el sistema operativo de tu computadora.
+# Aquí lo usamos principalmente para leer variables de entorno seguras, como tu clave 'GEMINI_API_KEY'.
 import os
+
+# 're' (Regular Expressions): Sirve para buscar y limpiar patrones de texto avanzados.
+# Lo usamos para quitar automáticamente las marcas de formato que a veces pone la IA (como ```json al inicio o ``` al final).
 import re
+
+# 'json' (JavaScript Object Notation): El formato universal para intercambiar datos estructurados en la web.
+# Permite transformar texto plano que nos devuelve la IA en diccionarios o listas nativas de Python (usando json.loads).
 import json
+
+# 'typing': Herramientas de Python para documentar y declarar el tipo de datos que maneja cada función:
+# - Tuple: Para funciones que devuelven un paquete fijo de valores (ej: una URL y un cuerpo JSON juntos).
+# - Dict: Para representar diccionarios de clave-valor (ej: {"clave": "valor"}).
+# - Any: Indica que un valor puede ser de cualquier tipo (número, texto, lista, etc.).
+# - Optional: Indica que un parámetro no es obligatorio y puede ser nulo (None).
 from typing import Tuple, Dict, Any, Optional
+
+# 'requests': La librería estándar y más confiable de Python para comunicarse por internet vía HTTP/HTTPS.
+# Con ella enviamos los datos del pedido a los servidores de Google Gemini mediante una petición POST y recibimos la respuesta.
 import requests
+
+# 'dotenv': Carga automáticamente el archivo oculto '.env' de tu proyecto en la memoria de la máquina.
+# Esto asegura que tus contraseñas y claves API nunca queden escritas dentro del código ni se suban a GitHub.
 from dotenv import load_dotenv
 
-# Cargar variables de entorno desde el archivo .env
+# Cargar las variables del archivo .env al sistema operativo
 load_dotenv()
 
 # ==============================================================================
