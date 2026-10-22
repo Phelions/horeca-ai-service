@@ -1,13 +1,33 @@
 """
-Banco de Prompts del Sistema HORECA AI Service
-Contiene las instrucciones de sistema, esquemas de salida JSON estructurada
-y ejemplos de entrada de usuario para las 3 tareas fundamentales de la miniaplicación.
+================================================================================
+MÓDULO: prompts/banco.py
+PROPÓSITO: Banco centralizado y versionado de prompts para el sistema HORECA.
+================================================================================
+
+¿QUÉ HACE ESTE ARCHIVO?
+-----------------------
+Guarda en un solo lugar los 3 prompts fundamentales de la aplicación.
+En lugar de tener textos largos regados por todo el código, los centralizamos aquí
+para que cualquier desarrollador pueda revisarlos, ajustarlos y probarlos con facilidad.
+
+¿POR QUÉ CADA PROMPT TIENE ESTA ESTRUCTURA?
+-------------------------------------------
+Cada elemento del banco contiene:
+1. 'nombre': Identificador único de la tarea (ej: extraer_pedido_horeca).
+2. 'descripcion': Breve explicación en español de para qué sirve.
+3. 'system_instruction': La regla o rol que le damos a Gemini en un canal separado
+   (le dice quién es y cómo debe comportarse, sin competir con la pregunta del usuario).
+4. 'ejemplo_usuario': Un mensaje real típico de cocina usado como caso de prueba.
+5. 'claves_esperadas': La lista de nombres de campos que obligatoriamente deben
+   venir en el JSON de respuesta.
+6. 'response_schema': El esquema estricto que le pasamos a la API de Gemini para
+   que no devuelva texto libre, sino un objeto estructurado.
 """
 
 BANCO_DE_PROMPTS = [
     {
         "nombre": "extraer_pedido_horeca",
-        "descripcion": "Extrae de forma quirúrgica insumos, cantidades numéricas y unidades de medida desde mensajes informales de cocina.",
+        "descripcion": "Extrae de forma limpia insumos, cantidades numéricas y unidades desde mensajes informales de cocina.",
         "system_instruction": (
             "Eres un asistente experto en adquisiciones para el sector gastronómico (HORECA). "
             "Tu misión es analizar mensajes informales de cocina y extraer cada insumo solicitado, "
@@ -43,7 +63,7 @@ BANCO_DE_PROMPTS = [
     },
     {
         "nombre": "clasificar_urgencia_pedido",
-        "descripcion": "Determina la criticidad temporal y la categoría de abastecimiento para priorizar despachos matutinos.",
+        "descripcion": "Evalúa la urgencia horaria y la categoría de insumos para priorizar la logística de compra matutina.",
         "system_instruction": (
             "Eres un despachador logístico para proveedores mayoristas de restaurantes. "
             "Analiza el mensaje del cliente y determina el nivel de urgencia ('ALTA', 'MEDIA', 'BAJA'), "
@@ -68,7 +88,7 @@ BANCO_DE_PROMPTS = [
     },
     {
         "nombre": "resumen_orden_compra",
-        "descripcion": "Genera una síntesis ejecutiva para el administrador del restaurante con conteo de insumos y alertas de conservación.",
+        "descripcion": "Genera una síntesis ejecutiva para el administrador con conteo total de ítems y alertas de conservación.",
         "system_instruction": (
             "Eres un auditor de compras gastronómicas. Analiza el pedido solicitado y genera un resumen ejecutivo "
             "indicando la cantidad total de insumos distintos pedidos, si el despacho incluye productos perecibles "

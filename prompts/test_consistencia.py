@@ -1,10 +1,40 @@
+"""
+================================================================================
+SCRIPT: prompts/test_consistencia.py
+PROPÓSITO: Medición empírica y automática de consistencia de los prompts (U1.5).
+================================================================================
+
+¿QUÉ HACE ESTE SCRIPT?
+----------------------
+Un error común en IA generativa es asumir que porque un prompt funcionó una vez,
+siempre va a funcionar. Los modelos de lenguaje son probabilísticos.
+Este script toma cada uno de los 3 prompts definidos en `prompts/banco.py` y los
+ejecuta varias veces consecutivas (por defecto 3 repeticiones por prompt) contra
+la API real de Gemini.
+
+¿CÓMO EVALÚA EL ÉXITO?
+----------------------
+Para cada llamada:
+1. Comprueba que la conexión no se caiga.
+2. Comprueba que el texto devuelto se pueda convertir a JSON válido sin romperse.
+3. Comprueba que el JSON contenga todas las claves requeridas (ej: 'items').
+4. Si pasa los 3 filtros, suma 1 éxito.
+5. Al final, guarda un archivo estructurado en `prompts/registro_resultados.json`
+   demostrando la tasa de éxito (ej: 100%).
+
+¿POR QUÉ TIENE UNA PAUSA (time.sleep)?
+--------------------------------------
+Para no saturar la cuota gratuita de Google AI Studio (error HTTP 429 de límite
+de peticiones por minuto).
+"""
+
 import os
 import sys
 import time
 import json
 from pathlib import Path
 
-# Agregar directorio raíz al PYTHONPATH para importar src
+# Añadir la carpeta raíz del proyecto para poder importar módulos de 'src'
 ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
@@ -14,8 +44,7 @@ from prompts.banco import BANCO_DE_PROMPTS
 
 def ejecutar_pruebas_consistencia(repeticiones_por_prompt: int = 3, pausa_segundos: float = 1.5):
     """
-    Ejecuta cada prompt del banco múltiples veces contra la API de Gemini
-    y valida que la salida sea un JSON conforme con las claves esperadas.
+    Ejecuta el ciclo de pruebas de consistencia y genera el archivo JSON de métricas.
     """
     print("=" * 70)
     print(" INICIANDO VALIDACIÓN DE CONSISTENCIA DE BANCO DE PROMPTS (U1.5)")
@@ -40,17 +69,21 @@ def ejecutar_pruebas_consistencia(repeticiones_por_prompt: int = 3, pausa_segund
             print(f"  -> Ejecutando intento {intento + 1}/{repeticiones_por_prompt}...", end=" ")
             
             try:
+                # 1. Armamos la petición con la instrucción y el esquema estricto
                 url, body = armar_peticion(
                     pregunta_usuario=prompt_info["ejemplo_usuario"],
                     system_instruction=prompt_info["system_instruction"],
                     response_schema=schema
                 )
                 
+                # 2. Enviamos la llamada a Google Gemini
                 respuesta_cruda = enviar_peticion(url, body)
                 texto_generado = extraer_texto(respuesta_cruda)
+                
+                # 3. Limpiamos markdown y convertimos a JSON
                 datos_parseados = parsear_respuesta_json(texto_generado)
 
-                # Validar presencia de todas las claves requeridas
+                # 4. Validamos que estén todas las claves que el negocio necesita
                 claves_faltantes = [c for c in claves_esperadas if c not in datos_parseados]
                 if claves_faltantes:
                     raise ValueError(f"Faltan claves requeridas en el JSON: {claves_faltantes}")
@@ -62,7 +95,7 @@ def ejecutar_pruebas_consistencia(repeticiones_por_prompt: int = 3, pausa_segund
             except Exception as err:
                 print(f"FALLÓ: {err}")
 
-            # Pausa preventiva para evitar error HTTP 429 (límite de cuota)
+            # Pausa preventiva de 1.5 segundos para respetar los límites de cuota (RPM)
             time.sleep(pausa_segundos)
 
         porcentaje = (exitos / repeticiones_por_prompt) * 100

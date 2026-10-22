@@ -1,3 +1,35 @@
+"""
+================================================================================
+MÓDULO: indexer.py
+PROPÓSITO: Indexación y Búsqueda Semántica del Catálogo Mayorista (HORECA)
+================================================================================
+
+¿QUÉ HACE ESTE ARCHIVO?
+-----------------------
+Permite que el sistema 'entienda' los productos del catálogo de proveedores no solo
+por coincidencia exacta de letras, sino por su significado real (búsqueda semántica).
+Por ejemplo: si el cocinero pide "posta limpia", el sistema es capaz de entender
+que se refiere a "Posta Negra Vacuno", o si pide "tomate ensalada" encuentra
+"Tomate Limachino Primera".
+
+¿CON QUIÉN SE COMUNICA?
+-----------------------
+1. Con Google Gemini API (`client.models.embed_content`): Envía el texto de cada
+   producto del catálogo y recibe una lista de números decimales (un 'embedding'
+   o vector matemático de 768 dimensiones) que representa el significado del producto.
+2. Con ChromaDB (Base de datos vectorial local en la carpeta `chroma_db/`):
+   Guarda esos vectores en el disco duro para poder hacer búsquedas instantáneas
+   sin tener que recalcularlos cada vez.
+3. Con el archivo `data/catalogo.json`: Lee los productos reales de los proveedores
+   mayoristas (SKU, nombre, categoría, unidad y precio).
+
+¿CÓMO SE COMUNICA?
+------------------
+- Utiliza la fórmula de 'Similitud Coseno' (Cosine Similarity): compara el ángulo
+  entre el vector de la pregunta y los vectores de los productos guardados.
+  Entre más cercano a 1.0 sea el resultado, más parecidos son en significado.
+"""
+
 import os
 import json
 from pathlib import Path
@@ -8,29 +40,37 @@ from chromadb.config import Settings
 from google import genai
 from google.genai.errors import APIError
 
-# Cargar variables de entorno desde .env
+# Cargar variables de entorno desde el archivo .env
 load_dotenv()
+
 
 class CatalogIndexer:
     """
-    Gestiona la vectorización del catálogo mayorista de insumos (HORECA)
-    utilizando embeddings de Google Gemini y almacenamiento persistente en ChromaDB.
+    Gestiona la vectorización y búsqueda inteligente del catálogo de insumos gastronómicos.
     """
+
     def __init__(
         self,
         collection_name: str = "catalogo_horeca",
         persist_directory: str = "chroma_db",
         embedding_model: Optional[str] = None
     ):
+        """
+        Inicializa las conexiones necesarias:
+        - Verifica que exista la clave GEMINI_API_KEY.
+        - Conecta con el cliente oficial de Gemini.
+        - Abre o crea la base de datos vectorial ChromaDB en la carpeta local.
+        """
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise ValueError(
                 "No se encontró GEMINI_API_KEY en las variables de entorno. "
-                "Verifica tu archivo .env"
+                "Verifica que tu archivo .env contenga una clave válida."
             )
         
         self.client = genai.Client(api_key=api_key)
-        # Modelo oficial activo para vectorización semántica en la API v1beta
+        
+        # Modelo oficial de Google para transformar texto en representaciones vectoriales
         self.embedding_model = embedding_model or os.getenv(
             "GEMINI_EMBEDDING_MODEL", 
             "gemini-embedding-001"
@@ -38,24 +78,35 @@ class CatalogIndexer:
         self.persist_directory = persist_directory
         self.collection_name = collection_name
         
-        # Inicializar cliente de ChromaDB persistente en disco local
+        # Conexión persistente con ChromaDB en el disco local
+        # Al usar persist_directory, los datos quedan guardados y no se borran al apagar el programa
         self.chroma_client = chromadb.PersistentClient(path=self.persist_directory)
+        
+        # Creamos u obtenemos la 'colección' (equivalente a una tabla en bases de datos tradicionales)
+        # Usamos distancia coseno ("cosine") porque es el estándar para medir similitud de texto
         self.collection = self.chroma_client.get_or_create_collection(
             name=self.collection_name,
-            metadata={"hnsw:space": "cosine"}  # Similitud coseno para embeddings normalizados
+            metadata={"hnsw:space": "cosine"}
         )
 
     def generar_embedding(self, texto: str) -> List[float]:
         """
-        Genera el vector denso correspondiente a una cadena de texto
-        utilizando la API oficial de Google GenAI.
+        PASO 1: CONVERTIR TEXTO EN VECTOR MATEMÁTICO
+        
+        ¿Qué hace?
+        - Envía una frase o descripción a Gemini y le pide que devuelva su vector denso.
+        - Por ejemplo, la palabra 'harina' se convierte en una lista de números como [0.021, -0.045, ...]
+        
+        ¿Para qué sirve?
+        - Las computadoras no entienden palabras, pero pueden calcular qué tan cerca
+          están dos listas de números entre sí.
         """
         try:
             result = self.client.models.embed_content(
                 model=self.embedding_model,
                 contents=texto
             )
-            # Extraer los valores vectoriales
+            # El resultado puede venir en .embeddings o .embedding según la versión del SDK
             if hasattr(result, "embeddings") and result.embeddings:
                 return result.embeddings[0].values
             elif hasattr(result, "embedding") and result.embedding:
@@ -67,21 +118,30 @@ class CatalogIndexer:
 
     def indexar_catalogo(self, ruta_json: str = "data/catalogo.json", forzar_reindexacion: bool = False) -> int:
         """
-        Lee el archivo JSON del catálogo mayorista, calcula los embeddings
-        de cada insumo y los persiste en ChromaDB.
+        PASO 2: LEER EL CATÁLOGO Y GUARDARLO EN LA BASE VECTORIAL
+        
+        ¿Qué hace?
+        1. Lee el archivo JSON con los productos del proveedor mayorista.
+        2. Revisa si la base de datos ya tiene los productos indexados para no gastar
+           llamadas a la API repitiendo el trabajo (a menos que uses forzar_reindexacion=True).
+        3. Para cada producto, arma un texto descriptivo enriquecido (nombre, categoría, unidad, proveedor).
+        4. Calcula el vector matemático de cada uno y los guarda en ChromaDB junto con sus metadatos.
+        
+        ¿Qué devuelve?
+        - La cantidad total de productos listos y guardados en la base de datos.
         """
         archivo = Path(ruta_json)
         if not archivo.exists():
             raise FileNotFoundError(f"No se encontró el archivo de catálogo en: {ruta_json}")
 
-        # Evitar reindexación innecesaria si ya existen documentos y no se forzó
         conteo_actual = self.collection.count()
+        # Si ya hay productos guardados y no pediste reindexar, reutilizamos lo que ya existe
         if conteo_actual > 0 and not forzar_reindexacion:
-            print(f"La colección '{self.collection_name}' ya contiene {conteo_actual} ítems indexados.")
+            print(f"[Aviso]: La colección '{self.collection_name}' ya contiene {conteo_actual} ítems indexados.")
             return conteo_actual
 
         if forzar_reindexacion and conteo_actual > 0:
-            print(f"Limpiando {conteo_actual} registros existentes para reindexar...")
+            print(f"Limpiando {conteo_actual} registros existentes para reindexar desde cero...")
             self.chroma_client.delete_collection(self.collection_name)
             self.collection = self.chroma_client.get_or_create_collection(
                 name=self.collection_name,
@@ -96,7 +156,7 @@ class CatalogIndexer:
         documents: List[str] = []
         metadatas: List[Dict[str, Any]] = []
 
-        print(f"Generando embeddings para {len(productos)} productos del catálogo...")
+        print(f"Calculando embeddings semánticos para {len(productos)} productos del catálogo...")
         
         for p in productos:
             sku = str(p["sku"])
@@ -106,12 +166,13 @@ class CatalogIndexer:
             precio = float(p["precio_actual"])
             proveedor = p["proveedor"]
 
-            # Texto enriquecido para capturar sinónimos y contexto gastronómico
+            # Texto enriquecido: junta las palabras clave para que la búsqueda sea más inteligente
             documento_semantico = (
                 f"Insumo: {nombre}. Categoría: {categoria}. Presentación: {unidad}. "
                 f"Proveedor: {proveedor}."
             )
 
+            # Convertimos el texto del producto en su vector numérico
             vector = self.generar_embedding(documento_semantico)
 
             ids.append(sku)
@@ -126,6 +187,7 @@ class CatalogIndexer:
                 "proveedor": proveedor
             })
 
+        # Guardamos todo el lote en ChromaDB en una sola operación
         self.collection.add(
             ids=ids,
             embeddings=embeddings,
@@ -133,14 +195,23 @@ class CatalogIndexer:
             metadatas=metadatas
         )
 
-        print(f"Indexación finalizada exitosamente: {len(ids)} insumos persistidos en ChromaDB.")
+        print(f"Indexación completada: {len(ids)} insumos persistidos en ChromaDB.")
         return len(ids)
 
     def buscar_producto(self, consulta: str, n_resultados: int = 1) -> List[Dict[str, Any]]:
         """
-        Busca semánticamente el insumo del catálogo más afín al término consultado
-        (ej: 'posta negra' -> 'Posta Negra Vacuno').
-        Retorna la lista de coincidencias con su distancia/score de similitud.
+        PASO 3: BÚSQUEDA SEMÁNTICA INTELIGENTE
+        
+        ¿Qué hace?
+        1. Toma la consulta escrita por el cocinero (ej: 'posta limpia').
+        2. La convierte en un vector matemático usando Gemini.
+        3. Le pide a ChromaDB que busque los 'n' productos cuyos vectores estén
+           más cerca en significado geométrico.
+        4. Calcula el porcentaje de similitud (0% a 100%).
+        
+        ¿Qué devuelve?
+        - Una lista con las mejores coincidencias del catálogo, incluyendo código SKU,
+          nombre oficial, proveedor, precio y porcentaje de similitud.
         """
         vector_consulta = self.generar_embedding(consulta)
         
@@ -153,8 +224,8 @@ class CatalogIndexer:
         coincidencias: List[Dict[str, Any]] = []
         if resultados["ids"] and len(resultados["ids"][0]) > 0:
             for idx in range(len(resultados["ids"][0])):
-                # En distancia coseno de ChromaDB, distancia = 1 - cosine_similarity
-                # Un valor cercano a 0 representa máxima similitud
+                # En ChromaDB con distancia coseno: distancia = 1 - similitud
+                # Una distancia cercana a 0 significa máxima afinidad
                 distancia = resultados["distances"][0][idx] if resultados["distances"] else 1.0
                 similitud = max(0.0, 1.0 - distancia)
                 
@@ -169,19 +240,22 @@ class CatalogIndexer:
         return coincidencias
 
 
+# ==============================================================================
+# EJECUCIÓN DIRECTA (DEMOSTRACIÓN DE BÚSQUEDA SEMÁNTICA)
+# ==============================================================================
 if __name__ == "__main__":
-    print("=" * 60)
-    print("Iniciando indexación vectorial del catálogo HORECA...")
-    print("=" * 60)
+    print("=" * 70)
+    print(" INICIANDO INDEXADOR Y BÚSQUEDA VECTORIAL DEL CATÁLOGO HORECA")
+    print("=" * 70)
 
     indexer = CatalogIndexer()
     total_indexados = indexer.indexar_catalogo(ruta_json="data/catalogo.json")
 
-    print("\n" + "=" * 60)
-    print("Ejecutando pruebas de búsqueda semántica:")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print(" PRUEBAS DE BÚSQUEDA SEMÁNTICA CON TÉRMINOS INFORMALES DE COCINA:")
+    print("=" * 70)
 
-    # Pruebas con términos informales de cocina
+    # Frases típicas de cocineros que no coinciden exactamente con el nombre de catálogo
     terminos_prueba = [
         "posta negra limpia",
         "tomate para ensalada",
@@ -194,9 +268,9 @@ if __name__ == "__main__":
         if hallazgos:
             top = hallazgos[0]
             meta = top["metadata"]
-            print(f"\n[Consulta]: '{termino}'")
-            print(f"  -> Coincidencia: [{meta.get('sku')}] {meta.get('nombre')}")
-            print(f"  -> Proveedor:    {meta.get('proveedor')} (${meta.get('precio_actual'):,.0f} / {meta.get('unidad_minima')})")
-            print(f"  -> Similitud:    {top['similitud'] * 100:.1f}% (Distancia: {top['distancia']})")
+            print(f"\n[Consulta Informal]: '{termino}'")
+            print(f"  -> Coincidencia Oficial: [{meta.get('sku')}] {meta.get('nombre')}")
+            print(f"  -> Proveedor Asignado:   {meta.get('proveedor')} (${meta.get('precio_actual'):,.0f} / {meta.get('unidad_minima')})")
+            print(f"  -> Similitud Semántica:  {top['similitud'] * 100:.1f}%")
         else:
-            print(f"\n[Consulta]: '{termino}' -> Sin resultados.")
+            print(f"\n[Consulta Informal]: '{termino}' -> Sin resultados.")
