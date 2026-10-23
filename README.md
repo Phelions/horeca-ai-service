@@ -98,10 +98,13 @@ LOG_LEVEL=INFO
 
 ### Ejecución de la Miniaplicación:
 ```bash
-# Punto de entrada principal (Gate 1):
+# Opción 1: Punto de entrada raíz (Estándar de evaluación Gate 1):
+python main.py
+
+# Opción 2: Punto de entrada dentro de src/:
 python src/main.py
 
-# O también mediante ejecución directa del módulo:
+# Opción 3: Ejecución directa del módulo de dominio:
 python src/order_parser.py
 ```
 
@@ -161,6 +164,19 @@ y 2 bidones de lavaloza concentrado. Ah y si tiene palta hass, mándeme 1 caja. 
   "model_used": "gemini-3.8-flash"
 }
 ```
+
+### ⚠️ Limitaciones del Alcance (Qué hace y qué NO hace la app - Gate 1):
+
+* **Qué SÍ hace la miniaplicación:**
+  * ✅ Procesa texto libre informal gastronómico y extrae ítems estructurados con esquemas Pydantic (`ItemPedido`, `PedidoExtraido`).
+  * ✅ Realiza validación preventiva temprana rechazando cadenas vacías o tipos inválidos antes de invocar la API.
+  * ✅ Maneja resiliencia ante contingencias externas (caídas de red, cuotas 429 y credenciales 401).
+  * ✅ Audita el consumo exacto de tokens y calcula el costo operacional en USD en vivo según tarifas de Gemini 3.8 Flash.
+* **Qué NO hace la miniaplicación (Delimitación para Gates 2 y 3):**
+  * ❌ No implementa autenticación de usuarios finales ni sesiones HTTP (reservado para API REST en **Gate 3**).
+  * ❌ No realiza búsqueda semántica contra bases vectoriales locales ni emparejamiento con catálogos (reservado para ChromaDB y RAG en **Gate 2**).
+  * ❌ No persiste datos en bases relacionales SQL ni emite órdenes de pago financiero directo.
+  * ❌ Requiere conectividad a internet para autenticarse contra el endpoint oficial de Google Gemini API.
 
 ---
 
