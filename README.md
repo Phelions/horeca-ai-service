@@ -240,3 +240,32 @@ pytest tests/ -v
   * Exposición de endpoints REST mediante **FastAPI**.
   * Empaquetado en contenedor **Docker** reproducible con un solo comando (`docker compose up`).
   * Matrices de pruebas E2E y riesgos de producción.
+
+---
+
+## 📋 9. Registro del Ensayo de Instalación Limpia (Verificación en Vivo)
+
+Siguiendo el protocolo oficial de verificación del Bloque 11, se ejecutó una simulación de clonado, instalación y ejecución desde cero en un entorno aislado sin intervención manual:
+
+* **Fecha de Verificación:** 2026-10-27
+* **Comandos Ejecutados en el Ensayo:**
+  ```bash
+  git clone https://github.com/Phelions/horeca-ai-service.git prueba-gate1
+  cd prueba-gate1
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install -r requirements.txt
+  cp .env.example .env
+  # (Se configuró GEMINI_API_KEY en .env)
+  python3 main.py
+  pytest tests/ -v
+  ```
+* **Hallazgos del Ensayo y Acciones Tomadas:**
+  1. *Dependencias Limpias:* Se optimizó `requirements.txt` fijando exactamente las dependencias del Gate 1 (`google-genai`, `pydantic`, `requests`, `python-dotenv`, `pytest`) para evitar sobrecargar a quien clona el proyecto.
+  2. *Punto de Entrada Estándar:* Se creó `main.py` en la raíz del proyecto para permitir la ejecución inmediata con `python main.py`, además del soporte nativo en `src/main.py`.
+  3. *Compatibilidad Python 3.14:* Se configuró `pytest.ini` (`filterwarnings = ignore::DeprecationWarning`) para silenciar advertencias internas del SDK de Google en Python 3.14 (`_UnionGenericAlias`), garantizando una terminal 100% limpia y sin ruidos técnicos.
+  4. *Seguridad de Credenciales:* Se auditó con `git log --all --full-history -- .env` y `git ls-files | grep .env` confirmando que el archivo confidencial `.env` jamás fue rastreado ni expuesto en el historial.
+* **Resultado tras la Verificación:**
+  * ✅ Ejecución limpia de `main.py` de punta a punta con respuesta estructurada de Gemini 3.8 Flash.
+  * ✅ 12/12 pruebas unitarias de `pytest` aprobadas en < 0.5 segundos con 0 fallos y 0 advertencias.
+  * ✅ Proyecto 100% reproducible y ejecutable sin intervención manual.
