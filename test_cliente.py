@@ -1,8 +1,13 @@
 """
-Modulo 2 - Bloque 14: test_cliente.py
-Suite de pruebas unitarias para el cliente modular con pytest y unittest.mock.
-Verifica las 4 funciones críticas (enviar_peticion, con_reintento, registrar_costo, consultar_modelo)
-sin consumir cuotas reales ni depender de internet.
+test_cliente.py - Suite de pruebas unitarias para el cliente modular de HORECA AI Service.
+
+Verifica con pytest y unittest.mock las 4 funciones críticas de resiliencia del Módulo 2:
+1. enviar_peticion: Clasificación estricta de errores HTTP (401 -> ValueError, 429/5xx -> TimeoutError, 200 -> OK).
+2. con_reintento: Reintentos con backoff ante TimeoutError y propagación directa ante ValueError.
+3. registrar_costo: Auditoría y suma acumulativa de tokens en costo_total_sesion.
+4. consultar_modelo: Orquestación de llamadas y traducción de TimeoutError en RuntimeError.
+
+Ejecución rápida (< 0.2s), sin consumir cuotas de API ni esperar con pausas lentas.
 """
 
 import pytest
@@ -20,101 +25,108 @@ from cliente import (
 @pytest.fixture(autouse=True)
 def reiniciar_costo_total():
     """
-    Fixture que se ejecuta automáticamente antes de cada prueba
-    para evitar que el acumulado de una prueba afecte a la siguiente.
+    Fixture de pytest con autouse=True para reiniciar costo_total_sesion a 0.0
+    antes de cada prueba y garantizar aislamiento total entre casos de prueba.
     """
     cliente.costo_total_sesion = 0.0
     yield
 
 
 # ==============================================================================
-# 1. Pruebas de enviar_peticion (Clasificación de errores y respuesta HTTP)
+# 1. PRUEBAS DE enviar_peticion (Clasificación de errores HTTP)
 # ==============================================================================
 
 def test_enviar_peticion_credencial_invalida():
-    """Verifica que un código HTTP 401 lance ValueError (no reintentable)."""
+    """Confirma que un error de autenticación (HTTP 401) lance ValueError (no reintentable)."""
     respuesta_falsa = Mock(status_code=401)
+    payload_pedido = {"contents": [{"parts": [{"text": "2 cajas de tomate limachino"}]}]}
 
     with patch("cliente.requests.post", return_value=respuesta_falsa):
-        with pytest.raises(ValueError, match="Credencial inválida"):
-            enviar_peticion({"pregunta": "test"})
+        with pytest.raises(ValueError, match="Credencial inválida o sin permiso"):
+            enviar_peticion(payload_pedido)
 
 
 def test_enviar_peticion_limite_de_uso():
-    """Verifica que un código HTTP 429 lance TimeoutError (reintentable)."""
+    """Confirma que un exceso de cuota (HTTP 429) lance TimeoutError (sí reintentable)."""
     respuesta_falsa = Mock(status_code=429)
+    payload_pedido = {"contents": [{"parts": [{"text": "10 kilos de posta negra"}]}]}
 
     with patch("cliente.requests.post", return_value=respuesta_falsa):
-        with pytest.raises(TimeoutError, match="El proveedor no pudo procesar"):
-            enviar_peticion({"pregunta": "test"})
+        with pytest.raises(TimeoutError, match="El proveedor no pudo procesar la petición"):
+            enviar_peticion(payload_pedido)
 
 
 def test_enviar_peticion_exito():
-    """Verifica que un código HTTP 200 devuelva el contenido JSON tal cual."""
+    """Confirma que una respuesta exitosa (HTTP 200) retorne el JSON procesado."""
     respuesta_falsa = Mock(status_code=200)
-    respuesta_falsa.json.return_value = {"texto": "respuesta simulada"}
+    respuesta_falsa.json.return_value = {
+        "candidates": [
+            {"content": {"parts": [{"text": "Pedido de 2 cajas de tomate confirmado."}]}}
+        ]
+    }
 
     with patch("cliente.requests.post", return_value=respuesta_falsa):
-        resultado = enviar_peticion({"pregunta": "test"})
+        resultado = enviar_peticion({"contents": [{"parts": [{"text": "2 cajas de tomate"}]}]})
 
-    assert resultado == {"texto": "respuesta simulada"}
+    assert "candidates" in resultado
+    assert resultado["candidates"][0]["content"]["parts"][0]["text"] == "Pedido de 2 cajas de tomate confirmado."
 
 
 # ==============================================================================
-# 2. Pruebas de con_reintento (Lógica de reintentos y excepciones)
+# 2. PRUEBAS DE con_reintento (Lógica de recuperación y excepciones)
 # ==============================================================================
 
 def test_con_reintento_agota_intentos():
-    """Verifica que al agotarse los 3 intentos, se propague el TimeoutError original."""
-    def siempre_falla():
-        raise TimeoutError("Límite de uso simulado")
+    """Confirma que si la llamada falla 3 veces seguidas por límite de cuota, propague TimeoutError."""
+    def falla_cuota():
+        raise TimeoutError("Límite de peticiones excedido en cocina")
 
     with patch("cliente.time.sleep") as mock_sleep:
-        with pytest.raises(TimeoutError):
-            con_reintento(siempre_falla, intentos=3)
+        with pytest.raises(TimeoutError, match="Límite de peticiones excedido"):
+            con_reintento(falla_cuota, intentos=3)
 
-    # Debe haber llamado a sleep 2 veces (entre intentos 1-2 y 2-3)
+    # Con 3 intentos, debe pausar 2 veces entre reintentos
     assert mock_sleep.call_count == 2
 
 
 def test_con_reintento_no_reintenta_value_error():
-    """Verifica que si ocurre un ValueError (credencial inválida), NO se reintente."""
-    intentos = {"conteo": 0}
+    """Confirma que si ocurre un ValueError (clave inválida), NO se reintente y termine de inmediato."""
+    conteo_llamadas = {"ejecuciones": 0}
 
-    def falla_credencial():
-        intentos["conteo"] += 1
-        raise ValueError("Clave inválida")
+    def falla_clave():
+        conteo_llamadas["ejecuciones"] += 1
+        raise ValueError("Clave GEMINI_API_KEY incorrecta")
 
     with patch("cliente.time.sleep") as mock_sleep:
-        with pytest.raises(ValueError, match="Clave inválida"):
-            con_reintento(falla_credencial, intentos=3)
+        with pytest.raises(ValueError, match="Clave GEMINI_API_KEY incorrecta"):
+            con_reintento(falla_clave, intentos=3)
 
-    # Solo debe ejecutarse 1 vez y no llamar a sleep
-    assert intentos["conteo"] == 1
+    # No debe reintentar: se detiene en la primera ejecución sin llamar a sleep
+    assert conteo_llamadas["ejecuciones"] == 1
     mock_sleep.assert_not_called()
 
 
 # ==============================================================================
-# 3. Pruebas de registrar_costo (Auditoría de tokens y acumulación de sesión)
+# 3. PRUEBAS DE registrar_costo (Auditoría financiera de tokens)
 # ==============================================================================
 
 def test_registrar_costo_acumula():
-    """Verifica el cálculo de costo por tokens y su suma a costo_total_sesion."""
+    """Confirma que lea los tokens de usageMetadata y acumule el costo en costo_total_sesion."""
     respuesta_falsa = {"usageMetadata": {"totalTokenCount": 1000}}
-    costo = registrar_costo(respuesta_falsa)
+    costo_operacion = registrar_costo(respuesta_falsa)
 
-    assert costo == cliente.COSTO_POR_1000_TOKENS
+    assert costo_operacion == cliente.COSTO_POR_1000_TOKENS
     assert cliente.costo_total_sesion == cliente.COSTO_POR_1000_TOKENS
 
 
 # ==============================================================================
-# 4. Pruebas de consultar_modelo (Traducción de errores para el consumidor)
+# 4. PRUEBAS DE consultar_modelo (Traducción de errores para el consumidor)
 # ==============================================================================
 
 def test_consultar_modelo_convierte_error():
-    """Verifica que cuando los reintentos se agotan, consultar_modelo lance RuntimeError."""
-    error_simulado = TimeoutError("simulado")
+    """Confirma que al agotarse los reintentos, consultar_modelo traduzca el fallo en RuntimeError."""
+    error_agotado = TimeoutError("Proveedor no disponible")
 
-    with patch("cliente.con_reintento", side_effect=error_simulado):
-        with pytest.raises(RuntimeError, match="El servicio no respondió tras varios intentos"):
-            consultar_modelo("pregunta de prueba")
+    with patch("cliente.con_reintento", side_effect=error_agotado):
+        with pytest.raises(RuntimeError, match="El servicio no respondió tras varios intentos. Intenta más tarde."):
+            consultar_modelo("Pedido de 5 sacos de harina panadera")

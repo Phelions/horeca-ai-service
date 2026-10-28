@@ -227,40 +227,6 @@ pytest tests/ -v
 
 ---
 
-## 🚀 8. Módulo 2: Cliente Modular, Resiliencia y Pruebas Unitarias (Bloques 12, 13 y 14)
-
-En el Módulo 2, la aplicación evoluciona de procesar peticiones aisladas a convertirse en un **cliente modular que aguanta un uso real y contingencias en producción**:
-
-### 📦 Componentes Implementados en la Raíz:
-1. **`cliente_api.py`**:
-   * `armar_peticion(pregunta, system_instruction)`: Construye el payload JSON para Gemini.
-   * `enviar_peticion(cuerpo)`: Clasifica respuestas HTTP (401/403 -> `ValueError`, 429/500+ -> `TimeoutError`).
-   * `extraer_texto(respuesta)`: Extrae limpiamente el texto de la respuesta.
-2. **`cliente.py`**:
-   * `con_reintento(funcion, intentos=3, espera_base=2.0, espera_maxima=30.0)`: Reintenta automáticamente ante `TimeoutError` aplicando **backoff exponencial** ($2, 4, 8\dots$ seg), techo máximo de espera y **jitter aleatorio** (10%) para evitar colisiones.
-   * `registrar_costo(respuesta)`: Lee `usageMetadata.totalTokenCount` y acumula el gasto en `costo_total_sesion`.
-   * `consultar_modelo(pregunta, system_instruction)`: Fachada única que orquesta la llamada, captura el agotamiento de reintentos y lo traduce en `RuntimeError("El servicio no respondió tras varios intentos. Intenta más tarde.")`.
-3. **`ensayo_rate_limit.py`**:
-   * Script para ejecutar un bucle de 10 peticiones seguidas, provocando saturación controlada de cuota para observar en vivo el backoff con jitter y registrar el gasto final.
-4. **`REGISTRO_RATE_LIMIT.md`**:
-   * Bitácora empírica que documenta las observaciones del ensayo de rate limit (esperas observadas, tokens y costo auditado).
-5. **`test_cliente.py`**:
-   * Suite de 7 pruebas unitarias con `pytest` y `unittest.mock` que verifica todas las rutas críticas en < 0.2 segundos sin tocar la API real ni esperar con sleeps lentos.
-
-### 🧪 Comandos de Ejecución y Verificación:
-```bash
-# 1. Probar el cliente modular con una consulta rápida
-python cliente.py
-
-# 2. Ejecutar el ensayo controlado de rate limit (Bloque 13)
-python ensayo_rate_limit.py
-
-# 3. Correr las pruebas unitarias del cliente con pytest (Bloque 14)
-pytest test_cliente.py -v
-```
-
----
-
 ## 🗺️ 8. Progresión de los 3 Gates (Hoja de Ruta)
 
 * **Gate 1 (Habilitación Técnica - Actual):**
