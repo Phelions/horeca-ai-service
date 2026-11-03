@@ -34,7 +34,7 @@ La miniaplicación sigue el principio de **Responsabilidad Única (SRP)** y sepa
   * `armar_peticion(...)`: Inyecta `systemInstruction`, payloads y configuración de `responseSchema`.
   * `enviar_peticion(...)`: Ejecuta el POST HTTP con timeout y manejo especializado de excepciones (conexión, 401, 429).
   * `extraer_texto(...)`: Navega de forma segura el árbol de respuesta JSON de Gemini.
-  * `parsear_respuesta_json(...)`: Limpia bloques markdown (`re.sub`) y valida la integridad del diccionario.
+  * `parsear_respuesta_json(...)`: Limpia bloques markdown y aísla objetos JSON con tolerancia a texto conversacional introductorio en modelos sin restricción estricta de MIME.
   * `calcular_costo(...)`: Mapea `usageMetadata` a costos en USD según las tarifas oficiales.
 * **`src/order_parser.py`**: Fachada de dominio con esquemas Pydantic (`ItemPedido`, `PedidoExtraido`), validación de entradas tempranas y logging operativo.
 * **`prompts/banco.py`**: Catálogo de prompts de sistema versionados con esquemas de validación estructural.

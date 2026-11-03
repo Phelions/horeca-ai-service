@@ -54,6 +54,9 @@ from typing import List, Optional, Dict, Any
 # como variables de entorno del sistema, evitando dejar contraseñas escritas en el código.
 from dotenv import load_dotenv
 
+# Importamos la función de parseo robusta desde el módulo desacoplado de consumo de API
+from src.consumo_api import parsear_respuesta_json
+
 # 'pydantic': La librería más popular de Python para validación de datos y tipado estricto.
 # - BaseModel: La clase base para crear nuestros propios 'moldes' de datos (esquemas).
 # - Field: Permite añadir descripciones y reglas a cada campo para que Gemini entienda qué extraer.
@@ -236,11 +239,10 @@ class OrderParser:
                 # Si el SDK ya convirtió la respuesta a nuestro objeto Pydantic
                 datos_pedido = response.parsed.model_dump()
             else:
-                # Si vino como texto plano, limpiamos posibles marcas de markdown
-                texto_limpio = response.text.strip()
-                texto_limpio = re.sub(r"^```(?:json)?\s*", "", texto_limpio)
-                texto_limpio = re.sub(r"\s*```$", "", texto_limpio)
-                datos_pedido = json.loads(texto_limpio)
+                # Si vino como texto plano (modelos sin restricción estricta de MIME o con texto conversacional),
+                # usamos parsear_respuesta_json para aislar y parsear el JSON de forma robusta
+                texto_raw = response.text or ""
+                datos_pedido = parsear_respuesta_json(texto_raw)
 
             # Validamos con Pydantic para garantizar conformidad total
             pedido_validado = PedidoExtraido(**datos_pedido).model_dump()

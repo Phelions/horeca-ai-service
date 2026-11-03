@@ -188,29 +188,66 @@ def extraer_texto(datos: Dict[str, Any]) -> str:
 
 def parsear_respuesta_json(texto: str) -> Dict[str, Any]:
     """
-    PASO 4: LIMPIAR Y CONVERTIR A DICCIONARIO
+    PASO 4: LIMPIAR Y CONVERTIR A DICCIONARIO (Tolerante a texto introductorio)
     
     ¿Qué hace?
-    - A veces los modelos de lenguaje envuelven el JSON en etiquetas de markdown,
-      como '```json ... ```'. Esta función usa expresiones regulares (Regex) para
-      eliminar esas marcas y dejar el texto limpio.
-    - Luego convierte el texto a un diccionario nativo de Python usando 'json.loads'.
-    - Verifica que el resultado sea efectivamente un objeto/diccionario.
+    - Convierte la respuesta generada por el modelo a un diccionario de Python.
+    - Es tolerante y robusto ante modelos sin restricción estricta de MIME (application/json),
+      los cuales suelen agregar saludos o texto conversacional antes o después del JSON
+      (por ejemplo: '¡Hola! Aquí tienes el pedido:\n```json\n{...}\n```\nSaludos!').
+    - Aplica tres estrategias en cascada:
+      1. Parseo directo con json.loads (cuando el modelo devuelve JSON puro).
+      2. Extracción mediante expresiones regulares de bloques markdown (```json ... ```).
+      3. Delimitación de llaves ({ ... }) para aislar el objeto JSON en medio de texto libre.
+    - Valida que el resultado final sea efectivamente un objeto/diccionario.
     """
-    texto_limpio = texto.strip()
-    # Eliminar posibles bloques de markdown al inicio y al final
-    texto_limpio = re.sub(r"^```(?:json)?\s*", "", texto_limpio)
-    texto_limpio = re.sub(r"\s*```$", "", texto_limpio)
+    if not isinstance(texto, str):
+        raise ValueError(f"Se esperaba una cadena de texto para parsear, pero se recibió: {type(texto).__name__}")
 
+    texto_limpio = texto.strip()
+    ultimo_error = None
+
+    # Estrategia 1: Parseo directo (caso ideal con MIME application/json o texto JSON puro)
     try:
         datos = json.loads(texto_limpio)
-    except json.JSONDecodeError as err:
-        raise ValueError(f"La respuesta generada no pudo interpretarse como JSON: {err}")
-
-    if not isinstance(datos, dict):
+        if isinstance(datos, dict):
+            return datos
         raise ValueError("El JSON generado debe ser un objeto/diccionario, no una lista o tipo primitivo.")
+    except (json.JSONDecodeError, ValueError) as err:
+        ultimo_error = err
 
-    return datos
+    # Estrategia 2: Buscar bloques de código markdown ```json ... ``` en cualquier parte del texto
+    bloques_md = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", texto_limpio)
+    for bloque in bloques_md:
+        try:
+            datos = json.loads(bloque.strip())
+            if isinstance(datos, dict):
+                return datos
+            raise ValueError("El JSON generado debe ser un objeto/diccionario, no una lista o tipo primitivo.")
+        except (json.JSONDecodeError, ValueError) as err:
+            ultimo_error = err
+
+    # Estrategia 3: Tolerancia a texto conversacional sin markdown (ubicar las llaves { ... })
+    indices_apertura = [pos for pos, char in enumerate(texto_limpio) if char == "{"]
+    fin_llave = texto_limpio.rfind("}")
+
+    if indices_apertura and fin_llave != -1:
+        for inicio_llave in indices_apertura:
+            if fin_llave > inicio_llave:
+                candidato = texto_limpio[inicio_llave : fin_llave + 1].strip()
+                try:
+                    datos = json.loads(candidato)
+                    if isinstance(datos, dict):
+                        return datos
+                    raise ValueError("El JSON generado debe ser un objeto/diccionario, no una lista o tipo primitivo.")
+                except (json.JSONDecodeError, ValueError) as err:
+                    ultimo_error = err
+
+    # Si se detectó que era un JSON válido pero no era diccionario, preservamos ese error específico
+    if isinstance(ultimo_error, ValueError) and "El JSON generado debe ser un objeto/diccionario" in str(ultimo_error):
+        raise ultimo_error
+
+    raise ValueError(f"La respuesta generada no pudo interpretarse como JSON: {ultimo_error}")
 
 
 def calcular_costo(

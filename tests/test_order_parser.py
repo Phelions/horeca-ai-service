@@ -163,6 +163,50 @@ def test_parsear_respuesta_json_detecta_json_corrupto():
         parsear_respuesta_json(texto_roto)
 
 
+def test_parsear_respuesta_json_tolera_texto_introductorio_con_markdown():
+    """
+    Verifica tolerancia a texto conversacional introductorio y de cierre
+    cuando el modelo no tiene restricción estricta de MIME y envuelve el JSON en markdown.
+    """
+    texto_conversacional = """¡Hola! Claro que sí, aquí tienes el desglose del pedido solicitado:
+    ```json
+    {
+        "categoria": "carnes",
+        "confianza": 0.98
+    }
+    ```
+    Espero que te sea de gran utilidad. Avísame si necesitas algo más."""
+    datos = parsear_respuesta_json(texto_conversacional)
+    assert isinstance(datos, dict)
+    assert datos["categoria"] == "carnes"
+    assert datos["confianza"] == 0.98
+
+
+def test_parsear_respuesta_json_tolera_texto_introductorio_sin_markdown():
+    """
+    Verifica tolerancia a texto introductorio y despedida cuando el modelo
+    devuelve un objeto JSON directo sin etiquetas de bloque markdown.
+    """
+    texto_sin_markdown = """Estimado equipo de cocina, adjunto el resultado procesado:
+    {
+        "categoria": "pescados",
+        "confianza": 0.91
+    }
+    Saludos cordiales,
+    Asistente HORECA."""
+    datos = parsear_respuesta_json(texto_sin_markdown)
+    assert isinstance(datos, dict)
+    assert datos["categoria"] == "pescados"
+    assert datos["confianza"] == 0.91
+
+
+def test_parsear_respuesta_json_rechaza_lista_o_tipo_primitivo():
+    """Valida que si el JSON es válido pero no es un diccionario/objeto, se rechace."""
+    texto_lista = "[1, 2, 3]"
+    with pytest.raises(ValueError, match="debe ser un objeto/diccionario"):
+        parsear_respuesta_json(texto_lista)
+
+
 # ==============================================================================
 # 4. PRUEBAS DE ESQUEMAS PYDANTIC (Dominio Gastronómico HORECA)
 # ==============================================================================
