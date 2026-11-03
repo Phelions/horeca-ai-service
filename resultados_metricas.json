@@ -1,0 +1,182 @@
+[
+  {
+    "caso_id": 1,
+    "consulta": "Necesitamos 2 cajas de tomate limachino bien firme y 1 saco de cebolla.",
+    "referencia": "Se confirman 2 cajas de tomate limachino firme y 1 saco de cebolla morada.",
+    "respuesta": "Confirmadas 2 cajas de tomate limachino firme y 1 saco de cebolla morada para entrega matutina.",
+    "precision": 0.75,
+    "cobertura": 0.8571,
+    "f1": 0.8
+  },
+  {
+    "caso_id": 2,
+    "consulta": "Mándame 10 kilos de posta negra limpia, cortada para churrasco.",
+    "referencia": "Registrados 10 kilos de posta negra limpia cortada en láminas para churrasco.",
+    "respuesta": "Confirmado el pedido de diez kilogramos de carne de vacuno desgrasada en bistec delgado para sándwich.",
+    "precision": 0.1875,
+    "cobertura": 0.25,
+    "f1": 0.2143
+  },
+  {
+    "caso_id": 3,
+    "consulta": "Confirmar 3 sacos de harina panadera de 25kg y 2 bidones de aceite vegetal.",
+    "referencia": "Confirmados 3 sacos de harina panadera de 25kg y 2 bidones de aceite vegetal de 5 litros.",
+    "respuesta": "Confirmados 3 sacos de harina panadera de 25kg y 2 bidones de aceite vegetal de 5 litros.",
+    "precision": 1.0,
+    "cobertura": 1.0,
+    "f1": 1.0
+  },
+  {
+    "caso_id": 4,
+    "consulta": "Para la pizzería necesitamos 10 barras de queso mozzarella de 3 kilos.",
+    "referencia": "Anotadas 10 barras de queso mozzarella de 3 kilos para despacho en frío.",
+    "respuesta": "Anotadas 10 barras de queso mozzarella de 3 kilos para despacho en frío.",
+    "precision": 1.0,
+    "cobertura": 1.0,
+    "f1": 1.0
+  },
+  {
+    "caso_id": 5,
+    "consulta": "Requerimos 8 kilos de salmón fresco y 5 kilos de reineta sin espinas.",
+    "referencia": "Registrados 8 kilos de salmón fresco y 5 kilos de filete de reineta sin espinas.",
+    "respuesta": "Registrados 8 kilos de salmón fresco y 5 kilos de filete de reineta fresca limpia sin espinas.",
+    "precision": 0.8824,
+    "cobertura": 1.0,
+    "f1": 0.9375
+  },
+  {
+    "caso_id": 6,
+    "consulta": "Agrega 3 bidones de lavaloza concentrado y 2 bidones de cloro en gel.",
+    "referencia": "Agregados 3 bidones de detergente lavaloza concentrado y 2 bidones de cloro en gel industrial.",
+    "respuesta": "Anotados 3 bidones de jabón lavavajillas líquido y 2 bidones de cloro en gel para limpieza.",
+    "precision": 0.625,
+    "cobertura": 0.6667,
+    "f1": 0.6452
+  },
+  {
+    "caso_id": 7,
+    "consulta": "Para mañana 40 panes de hamburguesa brioche y 30 marraquetas.",
+    "referencia": "Despacho de 40 unidades de pan brioche para hamburguesa y 30 marraquetas crujientes.",
+    "respuesta": "Despacho programado de 40 unidades de pan brioche para hamburguesa y 30 marraquetas crujientes.",
+    "precision": 0.9286,
+    "cobertura": 1.0,
+    "f1": 0.963
+  },
+  {
+    "caso_id": 8,
+    "consulta": "Traer 2 cajas de palta hass madura y 1 caja de limones sutiles.",
+    "referencia": "Se confirman 2 cajas de palta hass madura y 1 caja de limones sutiles seleccionados.",
+    "respuesta": "Se confirman 20 cajas de palta hass madura y 1 caja de limones sutiles seleccionados.",
+    "precision": 0.9333,
+    "cobertura": 0.9333,
+    "f1": 0.9333
+  },
+  {
+    "caso_id": 9,
+    "consulta": "2 cajas de pisco especial 35 grados y 1 caja de vino blanco sauvignon blanc.",
+    "referencia": "Confirmadas 2 cajas de pisco especial 35 grados y 1 caja de vino blanco sauvignon blanc.",
+    "respuesta": "Confirmadas 2 cajas de pisco especial 35 grados y 1 caja de vino blanco sauvignon blanc reserva.",
+    "precision": 0.9412,
+    "cobertura": 1.0,
+    "f1": 0.9697
+  },
+  {
+    "caso_id": 10,
+    "consulta": "1 kilo de orégano entero y 2 kilos de sal fina de mesa.",
+    "referencia": "Registrado 1 kilo de orégano entero seco y 2 kilos de sal fina de mesa.",
+    "respuesta": "Registrado 1 kilo de orégano entero seco y 2 kilos de sal fina de mesa.",
+    "precision": 1.0,
+    "cobertura": 1.0,
+    "f1": 1.0
+  },
+  {
+    "caso_id": 11,
+    "consulta": "¿La salsa de soya seleccionada contiene gluten de trigo?",
+    "referencia": "La salsa de soya seleccionada no contiene gluten de trigo añadido.",
+    "respuesta": "La salsa de soya seleccionada contiene gluten de trigo añadido.",
+    "precision": 1.0,
+    "cobertura": 0.9091,
+    "f1": 0.9524
+  },
+  {
+    "caso_id": 12,
+    "consulta": "Envío de 5 kilos de camarón ecuatoriano 36/40 con hielo seco.",
+    "referencia": "Envío de 5 kilos de camarón ecuatoriano calibre 36/40 congelado con hielo seco.",
+    "respuesta": "Envío de 5 kilos de camarón ecuatoriano calibre 36/40.",
+    "precision": 1.0,
+    "cobertura": 0.6923,
+    "f1": 0.8182
+  },
+  {
+    "caso_id": 13,
+    "consulta": "3 kilos de frutillas maduras para barra de tragos y postres.",
+    "referencia": "Anotados 3 kilos de frutillas seleccionadas para barra y repostería.",
+    "respuesta": "Anotados tres kilos de fresas frescas para coctelería y pastelería.",
+    "precision": 0.5,
+    "cobertura": 0.5,
+    "f1": 0.5
+  },
+  {
+    "caso_id": 14,
+    "consulta": "4 costillares de cerdo ahumado para plato del día.",
+    "referencia": "Confirmados 4 costillares de cerdo ahumado artesanal envasados al vacío.",
+    "respuesta": "Confirmados 4 costillares de cerdo ahumado artesanal envasados al vacío con guía de despacho.",
+    "precision": 0.7143,
+    "cobertura": 1.0,
+    "f1": 0.8333
+  },
+  {
+    "caso_id": 15,
+    "consulta": "¿Tienen disponibilidad de 5 sacos de harina de fuerza de 50 kilos?",
+    "referencia": "Disponibles 5 sacos de harina de fuerza en formato saco de 50 kilos.",
+    "respuesta": "Disponibles 5 sacos de harina de trigo estándar en sacos de 25 kilos cada uno.",
+    "precision": 0.6,
+    "cobertura": 0.6923,
+    "f1": 0.6429
+  },
+  {
+    "caso_id": 16,
+    "consulta": "5 litros de crema de leche para batir con 35% de materia grasa.",
+    "referencia": "Registrados 5 litros de crema de leche para repostería con 35% materia grasa.",
+    "respuesta": "Registrados 5 litros de crema de leche para repostería con 35% materia grasa.",
+    "precision": 1.0,
+    "cobertura": 1.0,
+    "f1": 1.0
+  },
+  {
+    "caso_id": 17,
+    "consulta": "200 cajas térmicas de hamburguesa y 300 bolsas de papel kraft.",
+    "referencia": "Despacho de 200 envases térmicos de hamburguesa y 300 bolsas kraft biodegradables.",
+    "respuesta": "Despacho de 200 envases térmicos de hamburguesa y 300 bolsas kraft biodegradables.",
+    "precision": 1.0,
+    "cobertura": 1.0,
+    "f1": 1.0
+  },
+  {
+    "caso_id": 18,
+    "consulta": "5 kilos de lechuga costina lavada y sanitizada en bolsa.",
+    "referencia": "Anotados 5 kilos de lechuga costina hidropónica lavada y sanitizada en bolsas de 1kg.",
+    "respuesta": "Anotados 5 kilos de lechuga costina lavada y desinfectada en bolsa lista para consumo.",
+    "precision": 0.6429,
+    "cobertura": 0.6429,
+    "f1": 0.6429
+  },
+  {
+    "caso_id": 19,
+    "consulta": "4 bidones de aceite alto oleico especial para freidoras.",
+    "referencia": "Confirmados 4 bidones de aceite alto oleico para freidora industrial de 20 litros.",
+    "respuesta": "Confirmados 4 bidones de aceite vegetal tradicional para cocina de 10 litros.",
+    "precision": 0.6667,
+    "cobertura": 0.6154,
+    "f1": 0.64
+  },
+  {
+    "caso_id": 20,
+    "consulta": "Disponibilidad de 10 kilos de almejas vivas en malla.",
+    "referencia": "Stock confirmado de 10 kilos de almejas vivas en malla con sello SERNAPESCA.",
+    "respuesta": "No contamos con almejas vivas hoy en terminal pesquero; ofrecemos choritos frescos en malla.",
+    "precision": 0.3571,
+    "cobertura": 0.3846,
+    "f1": 0.3704
+  }
+]

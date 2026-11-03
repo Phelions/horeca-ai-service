@@ -1,0 +1,82 @@
+[
+  {
+    "consulta": "Mándame 10 kilos de posta negra limpia, cortada para churrasco.",
+    "f1": 0.214,
+    "correccion_factual": "si",
+    "completitud": "si",
+    "contradiccion": "no",
+    "nota": "FALSO NEGATIVO POR SINÓNIMOS CULINARIOS: La respuesta utilizó 'diez kilogramos de carne de vacuno desgrasada en bistec delgado para sándwich'. Operativamente la orden es 100% correcta y equivalente, pero la métrica léxica la castiga con un F1 de solo 0.214 al no reconocer equivalencias semánticas del rubro carnicero."
+  },
+  {
+    "consulta": "Disponibilidad de 10 kilos de almejas vivas en malla.",
+    "f1": 0.37,
+    "correccion_factual": "no",
+    "completitud": "parcialmente",
+    "contradiccion": "si",
+    "nota": "QUIEBRE DE STOCK Y SUSTITUCIÓN: El proveedor no tiene almejas y ofrece choritos frescos. F1 es bajo (0.370) reflejando correctamente que no se cumple el insumo original, pero cualitativamente es una respuesta de negocio válida al alertar la contingencia y sugerir un reemplazo pesquero."
+  },
+  {
+    "consulta": "3 kilos de frutillas maduras para barra de tragos y postres.",
+    "f1": 0.5,
+    "correccion_factual": "si",
+    "completitud": "si",
+    "contradiccion": "no",
+    "nota": "VARIACIÓN REGIONAL DE VOCABULARIO: Se usó 'fresas' en lugar de 'frutillas', y 'coctelería y pastelería' en lugar de 'barra y repostería'. La comanda de cocina se cumple a cabalidad, pero la métrica F1 penaliza un 50% debido a variaciones léxicas regionales."
+  },
+  {
+    "consulta": "4 bidones de aceite alto oleico especial para freidoras.",
+    "f1": 0.64,
+    "correccion_factual": "no",
+    "completitud": "parcialmente",
+    "contradiccion": "no",
+    "nota": "ERROR CRÍTICO DE ESPECIFICACIÓN TÉCNICA: Se sustituyó 'aceite alto oleico de 20L' por 'aceite vegetal tradicional de 10L'. F1 otorga 0.640 (aparentemente aceptable), pero en cocina el aceite común se degrada rápido en fritura profunda industrial y el formato de 10L altera el rendimiento de costos."
+  },
+  {
+    "consulta": "¿Tienen disponibilidad de 5 sacos de harina de fuerza de 50 kilos?",
+    "f1": 0.643,
+    "correccion_factual": "parcialmente",
+    "completitud": "parcialmente",
+    "contradiccion": "no",
+    "nota": "DISCREPANCIA EN TIPO Y FORMATO DE ENVASE: Ofreció harina estándar en sacos de 25kg en vez de harina de fuerza de 50kg. F1 da 0.643, pero para panadería de masa madre la harina sin fuerza no desarrolla el gluten requerido y el formato de saco impacta la manipulación en bodega."
+  },
+  {
+    "consulta": "Traer 2 cajas de palta hass madura y 1 caja de limones sutiles.",
+    "f1": 0.933,
+    "correccion_factual": "no",
+    "completitud": "si",
+    "contradiccion": "no",
+    "nota": "FALSO POSITIVO GRAVE POR ERROR NUMÉRICO: La respuesta confirmó '20 cajas' en lugar de '2 cajas'. Debido a que casi todas las palabras coinciden, F1 da un engañoso 0.933 (93.3%), pero despachar 10 veces más palta hass representa una pérdida económica severa y merma por sobremaduración en restaurante."
+  },
+  {
+    "consulta": "¿La salsa de soya seleccionada contiene gluten de trigo?",
+    "f1": 0.952,
+    "correccion_factual": "no",
+    "completitud": "si",
+    "contradiccion": "si",
+    "nota": "FALSO POSITIVO POR NEGACIÓN AUSENTE (RIESGO BROMATOLÓGICO): La referencia indica 'no contiene gluten' y la respuesta generó 'contiene gluten'. F1 es altísimo (0.952), pero la omisión de un único token invierte el significado y crea un riesgo letal de contaminación cruzada para comensales celíacos."
+  },
+  {
+    "consulta": "Para mañana 40 panes de hamburguesa brioche y 30 marraquetas.",
+    "f1": 0.963,
+    "correccion_factual": "si",
+    "completitud": "si",
+    "contradiccion": "no",
+    "nota": "ALTA FIDELIDAD OPERATIVA: Coincidencia precisa en cantidades, tipos de panadería ('brioche', 'marraqueta') y programación horaria. Solo agregó palabras de cortesía operacionales ('programado')."
+  },
+  {
+    "consulta": "Confirmar 3 sacos de harina panadera de 25kg y 2 bidones de aceite vegetal.",
+    "f1": 1.0,
+    "correccion_factual": "si",
+    "completitud": "si",
+    "contradiccion": "no",
+    "nota": "COINCIDENCIA EXACTA CONFIRMADA: 100% de coincidencia léxica y factual en insumos secos de abarrotes. Cero discrepancias en cantidades, unidades y tipificación."
+  },
+  {
+    "consulta": "1 kilo de orégano entero y 2 kilos de sal fina de mesa.",
+    "f1": 1.0,
+    "correccion_factual": "si",
+    "completitud": "si",
+    "contradiccion": "no",
+    "nota": "COINCIDENCIA EXACTA EN ESPECIAS: 100% de coincidencia en pesos y nombres de condimentos. Tanto la métrica automática como la inspección humana confirman calidad óptima."
+  }
+]
