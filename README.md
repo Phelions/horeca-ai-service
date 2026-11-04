@@ -227,7 +227,37 @@ pytest tests/ -v
 
 ---
 
+## ⛓️ 7.1. LangChain y Orquestación de Flujos (U2.3)
+
+Como parte de la evolución hacia arquitecturas generativas modulares y resilientes en el Módulo 2 (Bloques 18, 19 y 20), se incorporó la orquestación avanzada con **LangChain Expression Language (LCEL)**:
+
+1. **Chain Secuencial de Tres Pasos (`cadena_tres_pasos.py` / Bloque 18):**
+   * Encadenamiento fluido con el operador `|` compuesto por:
+     * `plantilla_extraccion`: Aislamiento de puntos centrales del texto.
+     * `plantilla_simplificacion`: Reformulación a lenguaje directo sin jerga.
+     * `plantilla_formato`: Estructuración final en viñetas markdown.
+   * `StrOutputParser` e intermediarios funcionales para evitar fuga de metadatos o descalces de tipos.
+   * Ejecución desacoplada e inyección de modelos (`test_cadena_tres_pasos.py`).
+
+2. **Enrutamiento Condicional según la Entrada (`enrutamiento.py` / Bloque 19):**
+   * Clasificador temprano normalizado (`strip().lower()`) para discriminar intenciones (`queja`, `sugerencia`, `pregunta`).
+   * `RunnablePassthrough.assign(categoria=...)` que conserva intacto el payload de entrada.
+   * Bifurcación condicional mediante `RunnableBranch` con ruta de respaldo por defecto ante clasificaciones no contempladas (`test_enrutamiento.py`).
+
+3. **Flujo Orquestado End-to-End y Resiliencia (`orquestacion.py` / Bloque 20):**
+   * Integración directa al dominio HORECA: pedidos gastronómicos, reclamos de facturas y consultas de precios.
+   * Manejo granular de contingencias mediante `.with_fallbacks([paso_respaldo])` para que una caída de API o timeout en un paso intermedio no tumbe la transacción (`test_orquestacion.py`).
+   * Documentación formal del checklist de diseño en [`docs/checklist_orquestacion.md`](docs/checklist_orquestacion.md).
+
+```bash
+# Ejecutar la suite completa de orquestación LCEL
+pytest test_cadena_tres_pasos.py test_enrutamiento.py test_orquestacion.py -v
+```
+
+---
+
 ## 🗺️ 8. Progresión de los 3 Gates (Hoja de Ruta)
+
 
 * **Gate 1 (Habilitación Técnica - Actual):**
   * Miniaplicación modular con consumo de Gemini API.
