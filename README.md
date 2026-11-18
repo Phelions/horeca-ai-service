@@ -256,6 +256,43 @@ pytest test_cadena_tres_pasos.py test_enrutamiento.py test_orquestacion.py -v
 
 ---
 
+## 🤖 7.2. Agente Inteligente con Herramientas, HITL y Memoria Conversacional (U2.4)
+
+En el marco de la Unidad 2.4 (Bloques 21, 22 y 23 / Actividad Core), se diseñó e implementó un agente conversacional robusto para el dominio HORECA (`agente_con_herramientas.py`) utilizando `langchain-classic` (`create_tool_calling_agent`, `AgentExecutor(return_intermediate_steps=True)`) y `ChatGoogleGenerativeAI(model="gemini-3.8-flash")`:
+
+1. **Herramientas de Dominio en Tres Niveles de Riesgo:**
+   * **Riesgo Bajo (Solo lectura / Cálculo):** `consultar_catalogo_insumos` y `calcular_cotizacion`. Tipado estricto con `EsquemaCalcularCotizacion` (`BaseModel`), cálculo de subtotales e IVA (19%) sin efectos secundarios.
+   * **Riesgo Medio (Escritura reversible):** `crear_borrador_pedido` y `cancelar_borrador_pedido`. Permiten emitir órdenes en estado `BORRADOR` o anularlas sin compromisos contractuales ni financieros.
+   * **Riesgo Alto (Escritura irreversible / Impacto financiero):** `emitir_orden_compra_formal` y `procesar_pago_proveedor`. Emisión de órdenes vinculantes y pagos bancarios con control estricto de autonomía humana.
+
+2. **Control de Autonomía Humana (Human-In-The-Loop / HITL):**
+   * Función `esperar_aprobacion(mensaje, tiempo_limite_segundos=300)` sobre `sys.stdin` con `select.select()`, implementando política de falla segura (*fail-closed*) ante timeouts o rechazos.
+   * Invocación exclusiva dentro de las herramientas de riesgo alto (`grep -n "esperar_aprobacion(" agente_con_herramientas.py` coincide únicamente con su definición y las 2 herramientas de alto riesgo).
+   * Persistencia de autorizaciones en `registro_aprobaciones.jsonl` mediante `registrar_aprobacion`.
+
+3. **Memoria Conversacional Multiturno Aislada:**
+   * `RunnableWithMessageHistory` con `InMemoryChatMessageHistory` indexada por `session_id`, evitando fuga de contexto entre negocios compradores o usuarios distintos.
+   * Estructura estricta de placeholders en `ChatPromptTemplate`:
+     1. `("system", PROMPT_SISTEMA_HORECA)`
+     2. `MessagesPlaceholder("chat_history")`
+     3. `("human", "{entrada}")`
+     4. `MessagesPlaceholder("agent_scratchpad")`
+
+4. **Auditoría Forense de Trazas y Detección de Anomalías:**
+   * Volcado atómico en UTF-8 JSON Lines de cada acción y observación en `trazas_agente.jsonl` mediante `registrar_traza`.
+   * Analizador automatizado `marcar_repeticiones_sospechosas` para identificar bucles infinitos o invocaciones consecutivas anómalas (`herramientas[i] == herramientas[i - 1]`).
+   * Documento oficial de límites de autonomía en [`docs/limites_autonomia_agente.md`](docs/limites_autonomia_agente.md).
+
+```bash
+# Ejecutar la suite completa del agente con herramientas y autonomía
+pytest test_agente_con_herramientas.py -v
+
+# Ejecución interactiva del agente para generar trazas reales en vivo
+python agente_con_herramientas.py
+```
+
+---
+
 ## 🗺️ 8. Progresión de los 3 Gates (Hoja de Ruta)
 
 

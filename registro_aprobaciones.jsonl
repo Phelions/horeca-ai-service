@@ -1,0 +1,1 @@
+{"timestamp": "2026-11-18T00:55:40.190022", "accion": "emitir_orden_compra_formal", "aprobada": true, "usuario": "operador_supervisor", "detalles": {"session_id": "sesion_1794974042", "id_borrador": "BORR-0001", "proveedor": "Lácteos del Sur", "monto_total_pesos": 59000.0}}
