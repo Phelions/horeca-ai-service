@@ -293,6 +293,44 @@ python agente_con_herramientas.py
 
 ---
 
+## 🔎 7.3. Flujo RAG con Chroma, Evaluación de Recuperación y Auditoría de Latencia/Costo (U2.5)
+
+En el marco de la Unidad 2.5 (Bloques 24, 25, 26, 27 y 28 / Actividad Core), se implementó el flujo RAG completo sobre documentación técnica de la plataforma B2B HORECA con `langchain-chroma`, `GoogleGenerativeAIEmbeddings` (`models/gemini-embedding-001`) y `ChatGoogleGenerativeAI` (`gemini-3.8-flash`):
+
+1. **Chunking, Metadata e Indexación Persistente (`test_chunking.py`, `indexar_corpus.py`):**
+   * Comparación empírica entre `CharacterTextSplitter` y `RecursiveCharacterTextSplitter` (`test_chunking.py`).
+   * Indexación de 10 documentos técnicos HORECA (`doc0` a `doc9`, cada uno con metadata `"fuente"` e IDs explícitos) usando `chunk_size=200`, `chunk_overlap=30`, validación de integridad, reintentos ante errores `429` y persistencia en `vectorstore/` (excluida en `.gitignore`).
+
+2. **Recuperación Semántica y Prompt Dinámico con Citas (`recuperacion.py`):**
+   * Reconexión al índice Chroma persistido mediante `cargar_vectorstore()`, formateo numerado `[N]` del contexto recuperado y mapa `citas` (`{1: fuente, ...}`), instruyendo explícitamente a citar fuentes o admitir insuficiencia de contexto.
+
+3. **Evaluación Cuantitativa de Recuperación (`evaluacion_recuperacion.py`, `resultados_evaluacion.txt`):**
+   * Evaluación con `precision_at_k`, `recall_at_k` y `f1` sobre 10 preguntas etiquetadas (`K=3`), logrando promedio real `precision: 0.333` y `recall: 1.000`.
+
+4. **Preflight, Latencia y Costo Real (`preflight.py`, `registro_rag.py`, `leer_registros.py`, `docs/checklist_rag.md`):**
+   * Chequeo previo local (`preflight.py`) validando `vectorstore/` y `.gitignore`.
+   * Instrumentación por etapa (`embed_y_busqueda` vs `generacion`) con `time.perf_counter()` y conteo real de tokens (`usage_metadata`) en `registros_latencia_costo.jsonl`, contrastando `k=3` vs `k=6`.
+   * Revisión formal en [`docs/checklist_rag.md`](docs/checklist_rag.md) y pruebas offline en `test_rag_u25.py`.
+
+```bash
+# 1. Indexar corpus en vectorstore/ y verificar preflight
+.venv/bin/python indexar_corpus.py
+.venv/bin/python preflight.py
+
+# 2. Probar recuperación con citas y evaluación cuantitativa
+.venv/bin/python recuperacion.py
+.venv/bin/python evaluacion_recuperacion.py
+
+# 3. Registrar latencia/costo real y leer resumen
+.venv/bin/python registro_rag.py
+.venv/bin/python leer_registros.py
+
+# 4. Ejecutar pruebas automatizadas offline de U2.5
+.venv/bin/pytest test_chunking.py test_rag_u25.py -v
+```
+
+---
+
 ## 🗺️ 8. Progresión de los 3 Gates (Hoja de Ruta)
 
 

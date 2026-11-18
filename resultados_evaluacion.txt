@@ -1,0 +1,15 @@
+Fecha: 2026-11-18
+Configuracion: k=3, chunk_size=200, chunk_overlap=30
+
+0.33  1.00  que hace el cliente si una peticion tarda demasiado o da timeout
+0.33  1.00  que ocurre cuando la clave de api es invalida o devuelve error 401
+0.33  1.00  como se calcula el costo en tokens de cada llamada al modelo
+0.33  1.00  como se extraen y validan los pedidos informales de hoteles y cafeterias
+0.33  1.00  como se clasifican y desvian los mensajes de soporte en queja pregunta o sugerencia
+0.33  1.00  que mecanismo evita que un fallo del modelo detenga el flujo orquestado
+0.33  1.00  que herramientas de bajo riesgo permiten consultar stock y cotizar con IVA
+0.33  1.00  como funcionan los borradores de pedido reversibles de riesgo medio
+0.33  1.00  que acciones de alto riesgo exigen aprobacion humana con limite de tiempo
+0.33  1.00  como se ejecutan las pruebas unitarias rapidas sin gastar cuota de red
+
+promedio -> precision: 0.333  recall: 1.000

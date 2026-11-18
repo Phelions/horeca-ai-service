@@ -18,6 +18,8 @@ htmlcov/
 
 # Bases de datos y almacenamiento vectorial local
 chroma_db/
+vectorstore/
+vectorstore_ejemplo/
 
 # Editores e IDEs
 .idea/
