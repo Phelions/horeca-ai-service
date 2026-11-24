@@ -331,6 +331,31 @@ En el marco de la Unidad 2.5 (Bloques 24, 25, 26, 27 y 28 / Actividad Core), se 
 
 ---
 
+## 🧩 7.4. Personalización de Modelos y Decisión Fundamentada (U2.6)
+
+En el marco de la Unidad 2.6 (Bloques 29 y 30 / Actividad Core), se exploró cuándo usar RAG, fine-tuning completo, PEFT y soft-prompting y se formalizó la estrategia para HORECA AI Service:
+
+1. **Verificación de entorno y tipos de tuning (`verificar_entorno.py`):**
+   * Valida `google-genai` (`3.2.0`), `GEMINI_API_KEY`, modos `TuningMode`, tamaños de adapter `AdapterSize` y campos de `CreateTuningJobConfig`, además de `explicar_error`.
+
+2. **Laboratorio guiado de dataset PEFT (`dataset_tuning.py` / Bloque 29):**
+   * Dataset propio del dominio B2B HORECA con **12 ejemplos** balanceados en 4 categorías (`pedido_compra`, `reclamo_despacho`, `consulta_catalogo`, `ajuste_o_cancelacion`, 3 ejemplos c/u) hacia salida JSON fija (`categoria`, `prioridad`), junto con `chequear_balance`, `validar_dataset`, `construir_configuracion_peft` y `esperar_a_que_termine`.
+
+3. **Evaluación cuantitativa y documento de decisión (`decision.py`, `decision_personalizacion.md` / Bloque 30 Core):**
+   * Aplica `recomendar_estrategia` con soporte de empates, análisis de sensibilidad y cálculo de costo humano de etiquetado (`estimar_costo_de_etiquetar`), fundamentando en [`decision_personalizacion.md`](decision_personalizacion.md) la elección de **RAG** (`5` puntos frente a `1` de PEFT y `0` de fine-tuning completo) como estrategia principal y dejando trazados los requisitos cuantificados para producción y un futuro complemento PEFT.
+
+```bash
+# Verificar entorno SDK, validar dataset y correr análisis de decisión
+.venv/bin/python verificar_entorno.py
+.venv/bin/python dataset_tuning.py
+.venv/bin/python decision.py
+
+# Ejecutar pruebas automatizadas de la Unidad 2.6
+.venv/bin/pytest test_u26.py -v
+```
+
+---
+
 ## 🗺️ 8. Progresión de los 3 Gates (Hoja de Ruta)
 
 
