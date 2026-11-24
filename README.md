@@ -386,16 +386,59 @@ Se completó la instrumentación transversal de seguridad, trazabilidad y gobern
 
 ---
 
+## 🏁 7.6. Gate 2 — Integración y Orquestación del Servicio RAG (Unidad 2.8 / Bloque S1)
+
+El cierre del Módulo 2 integra en un único servicio modular las piezas de indexación y recuperación (U2.5), decisión de personalización (U2.6) y observabilidad, defensa anti-inyección, versionado y supervisión humana (U2.7), superando las **6 dimensiones ponderadas** (`93.95 %` en autoevaluación) y los **4 criterios no compensables**.
+
+### Componentes de Integración (Gate 2)
+- **`indexar_corpus.py` (actualizado):** agrega `cargar_o_crear_indice()` para reutilizar el vector store persistido sin duplicar chunks en cada arranque, y `actualizar_indice_incremental()` para incorporar nuevos documentos por ID omitiendo duplicados.
+- **`logging_rag.py` (endurecido en ensayo Gate 2):** propaga `trace_id_var` desde `retriever_start` hasta `consulta_completada`, amplía detección a `"revela tu prompt"`, normaliza respuestas en bloques de Gemini (`extraer_texto_respuesta()`) y corta antes del LLM emitiendo `sin_contexto_confiable` si el 100 % de los fragmentos recuperados son descartados por inyección.
+- **`servicio_rag.py`:** servicio principal (`responder_servicio()`, `ejecutar_servicio()`) que conecta índice persistido (`vectorstore_gate2/` en modo determinista offline o `vectorstore/` con `--real`), filtro anti-inyección sobre `Document`, citación garantizada de fuentes, logs JSON sin texto crudo ni PII, latencia/costo y la compuerta LangGraph HITL de `grafo_supervision.py`.
+- **`verificar_entorno.py` (ampliado con `--gate2`):** comprueba Python, librerías core (`langchain-core`, `langchain-chroma`, `langgraph`, `python-dotenv`, `langchain-google-genai`, `google-genai`), presencia de `GEMINI_API_KEY` (sin imprimirla) e índice persistido en `vectorstore/`.
+- **`ensayo_gate2.py` y `docs/registro_ensayo_gate2.md`:** ensayo funcional end-to-end y registro escrito de los 4 desacoples reales detectados y corregidos al conectar todas las etapas.
+- **`rubrica_gate2.py` y `test_gate2.py`:** cálculo ponderado de las 6 dimensiones (`PESOS`) + verificación automatizada de los 4 criterios no compensables y de integración.
+
+### Guía rápida de punta a punta (instalación limpia → consulta en vivo)
+
+```bash
+# 1. Validar entorno virtual, variables (.env ignorado) e índice persistido
+git check-ignore .env
+.venv/bin/python verificar_entorno.py --gate2
+
+# 2. Indexar el corpus en vectorstore/ (solo necesario si aún no existe o tras limpiar índice)
+.venv/bin/python indexar_corpus.py
+
+# 3. Correr el ensayo funcional completo y la autoevaluación de rúbrica
+.venv/bin/python ensayo_gate2.py
+.venv/bin/python rubrica_gate2.py
+
+# 4. Ejecutar el servicio integrado (offline determinista o con API real de Gemini)
+.venv/bin/python servicio_rag.py
+.venv/bin/python servicio_rag.py --real
+
+# 5. Ejecutar pruebas no compensables Gate 2 y suite completa del repositorio
+.venv/bin/python -m pytest test_gate2.py -v
+.venv/bin/python -m pytest -v
+```
+
+### Corrida real documentada (Gemini API + `vectorstore/`)
+- Ejecución: `.venv/bin/python servicio_rag.py --real` (`trace_id`: `trace-a088cc5d`, índice `indice_reutilizado` en `vectorstore/`).
+- Respuesta grounded con citas `[1]` y fuentes resueltas (`agente_con_herramientas.py`, `docs/limites_autonomia_agente.md`).
+- Métricas registradas en JSON sin texto crudo: `input_tokens: 350`, `output_tokens: 463`, `total_tokens: 813`, `latencia_ms`: `1279.3 ms` (recuperación) + `6003.99 ms` (generación), `costo_usd: 0.00022`.
+
+---
+
 ## 🗺️ 8. Progresión de los 3 Gates (Hoja de Ruta)
 
 
-* **Gate 1 (Habilitación Técnica - Actual):**
-  * Miniaplicación modular con consumo de Gemini API.
-  * Extracción estricta en JSON y esquemas Pydantic.
+* **Gate 1 (Habilitación Técnica — Aprobado):**
+  * Miniaplicación modular con consumo de Gemini API (`src/main.py`, `src/consumo_api.py`).
+  * Extracción estricta en JSON y esquemas Pydantic (`src/order_parser.py`).
   * Manejo de excepciones, auditoría de costos en USD, banco de prompts validado y tests unitarios.
-* **Gate 2 (Integración y Orquestación - Módulo 2):**
-  * Integración con ChromaDB (`src/indexer.py`) para emparejar insumos informales contra el catálogo oficial mayorista (`data/catalogo.json`).
-  * Agente con herramientas de consulta a históricos (`data/historico_compras.json`) para alertar sobrecostos y variaciones de precios.
+* **Gate 2 (Integración y Orquestación — Completado):**
+  * Indexación persistente e incremental con ChromaDB (`indexar_corpus.py`), recuperación citada (`recuperacion.py`), métricas de recuperación (`evaluacion_recuperacion.py`) y latencia/costo (`registro_rag.py`).
+  * Agente B2B con herramientas y compuerta HITL por riesgo (`agente_con_herramientas.py`), decisión cuantitativa de personalización (`decision.py`, `decision_personalizacion.md`).
+  * Observabilidad JSON con `trace_id`, filtro anti-inyección multicapa (`logging_rag.py`), versionado SHA-256 (`registro_prompts.py`), supervisión LangGraph (`grafo_supervision.py`), matriz de riesgos (`matriz_riesgos.py`) y servicio unificado (`servicio_rag.py`, `test_gate2.py`).
 * **Gate 3 (Capstone - Módulo 3):**
   * Exposición de endpoints REST mediante **FastAPI**.
   * Empaquetado en contenedor **Docker** reproducible con un solo comando (`docker compose up`).

@@ -112,6 +112,28 @@ def obtener_embeddings(embeddings: Optional[Any] = None) -> Any:
     )
 
 
+def _preparar_chunks_e_ids(
+    corpus: List[str],
+    metadatas: Optional[List[Dict[str, str]]],
+    ids: Optional[List[str]],
+    chunk_size: int = 200,
+    chunk_overlap: int = 30,
+) -> tuple[List[Document], List[str]]:
+    """Fragmenta corpus, valida integridad no vacía y resuelve IDs reproducibles."""
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
+    chunks = splitter.create_documents(corpus, metadatas=metadatas)
+    integridad = verificar_integridad_chunks(chunks, corpus)
+    if integridad["vacios"]:
+        raise ValueError(f"Se detectaron chunks vacíos en índices: {integridad['vacios']}")
+    ids_finales = list(ids) if ids is not None and len(ids) == len(chunks) else [
+        f"doc{i}" for i in range(len(chunks))
+    ]
+    return chunks, ids_finales
+
+
 def indexar_corpus(
     corpus: List[str] = CORPUS_HORECA,
     persist_directory: str = PERSIST_DIRECTORY,
@@ -127,19 +149,9 @@ def indexar_corpus(
         SharedSystemClient.clear_system_cache()
         shutil.rmtree(persist_directory)
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
+    chunks, ids_finales = _preparar_chunks_e_ids(
+        corpus, metadatas=metadatas, ids=ids, chunk_size=chunk_size, chunk_overlap=chunk_overlap
     )
-    chunks = splitter.create_documents(corpus, metadatas=metadatas)
-
-    integridad = verificar_integridad_chunks(chunks, corpus)
-    if integridad["vacios"]:
-        raise ValueError(f"Se detectaron chunks vacíos en índices: {integridad['vacios']}")
-
-    ids_finales = list(ids) if ids is not None and len(ids) == len(chunks) else [
-        f"doc{i}" for i in range(len(chunks))
-    ]
     modelo_embeddings = obtener_embeddings(embeddings)
 
     vectorstore = con_reintentos(
@@ -167,6 +179,67 @@ def cargar_vectorstore(
         persist_directory=persist_directory,
         embedding_function=modelo_embeddings,
     )
+
+
+def cargar_o_crear_indice(
+    corpus: List[str] = CORPUS_HORECA,
+    metadatas: Optional[List[Dict[str, str]]] = METADATAS_HORECA,
+    ids: Optional[List[str]] = IDS_HORECA,
+    persist_directory: str = PERSIST_DIRECTORY,
+    embeddings: Optional[Any] = None,
+    collection_name: str = COLLECTION_NAME,
+) -> tuple[Chroma, str]:
+    """Reutiliza el vector store persistido si ya tiene documentos; solo indexa si está vacío."""
+    vectorstore = cargar_vectorstore(
+        persist_directory=persist_directory,
+        embeddings=embeddings,
+        collection_name=collection_name,
+    )
+    if vectorstore.get()["ids"]:
+        return vectorstore, "indice_reutilizado"
+
+    chunks, ids_finales = _preparar_chunks_e_ids(corpus, metadatas=metadatas, ids=ids)
+    con_reintentos(lambda: vectorstore.add_documents(chunks, ids=ids_finales))
+    return vectorstore, "indice_creado"
+
+
+def actualizar_indice_incremental(
+    nuevos_textos: List[str],
+    nuevos_metadatas: List[Dict[str, str]],
+    nuevos_ids: List[str],
+    persist_directory: str = PERSIST_DIRECTORY,
+    embeddings: Optional[Any] = None,
+    collection_name: str = COLLECTION_NAME,
+) -> Dict[str, int]:
+    """Agrega al índice persistido únicamente los documentos cuyos IDs aún no existan."""
+    if not (len(nuevos_textos) == len(nuevos_metadatas) == len(nuevos_ids)):
+        raise ValueError("nuevos_textos, nuevos_metadatas y nuevos_ids deben tener igual longitud.")
+
+    vectorstore = cargar_vectorstore(
+        persist_directory=persist_directory,
+        embeddings=embeddings,
+        collection_name=collection_name,
+    )
+    existentes = set(vectorstore.get()["ids"])
+    docs_pendientes: List[Document] = []
+    ids_pendientes: List[str] = []
+
+    for texto, meta, doc_id in zip(nuevos_textos, nuevos_metadatas, nuevos_ids):
+        if doc_id in existentes or doc_id in ids_pendientes:
+            continue
+        if not texto.strip():
+            raise ValueError(f"Documento incremental {doc_id!r} está vacío.")
+        docs_pendientes.append(Document(page_content=texto, metadata=dict(meta)))
+        ids_pendientes.append(doc_id)
+
+    if docs_pendientes:
+        con_reintentos(lambda: vectorstore.add_documents(docs_pendientes, ids=ids_pendientes))
+
+    return {
+        "agregados": len(docs_pendientes),
+        "omitidos_por_duplicado": len(nuevos_ids) - len(ids_pendientes),
+        "total_indice": len(vectorstore.get()["ids"]),
+    }
 
 
 if __name__ == "__main__":

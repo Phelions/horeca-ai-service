@@ -8,11 +8,24 @@ Comprueba sin consumir cuota ni lanzar entrenamientos:
 """
 
 import os
+import sys
 from importlib.metadata import PackageNotFoundError, version
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from google.genai import types
+
+
+PAQUETES_GATE2: List[str] = [
+    "langchain-core",
+    "langchain-chroma",
+    "langgraph",
+    "python-dotenv",
+    "langchain-google-genai",
+    "google-genai",
+]
+VARIABLES_GATE2: List[str] = ["GEMINI_API_KEY"]
+INDICE_GATE2_DIR: str = "vectorstore"
 
 
 def explicar_error(error: Exception) -> str:
@@ -73,6 +86,71 @@ def imprimir_resumen_entorno(resumen: Dict[str, object]) -> None:
         print(f" {campo} -> {desc}")
 
 
+def verificar_entorno_gate2(
+    paquetes: List[str] = PAQUETES_GATE2,
+    variables: List[str] = VARIABLES_GATE2,
+    indice_dir: str = INDICE_GATE2_DIR,
+) -> Dict[str, Any]:
+    """Comprueba Python, dependencias, variables (.env sin imprimir clave) e índice persistido."""
+    load_dotenv()
+    problemas: List[str] = []
+    versiones: Dict[str, str] = {}
+    estado_variables: Dict[str, str] = {}
+
+    if sys.version_info < (3, 10):
+        problemas.append("usar Python 3.10 o superior")
+
+    for paquete in paquetes:
+        try:
+            versiones[paquete] = version(paquete)
+        except PackageNotFoundError:
+            versiones[paquete] = "NO instalado"
+            problemas.append(f"instalar {paquete}")
+
+    for nombre in variables:
+        definida = bool(os.getenv(nombre))
+        estado_variables[nombre] = "definida" if definida else "FALTA"
+        if not definida:
+            problemas.append(f"definir {nombre} en el archivo .env")
+
+    indice_ok = os.path.isdir(indice_dir) and bool(os.listdir(indice_dir))
+    if not indice_ok:
+        problemas.append(f"indexar el corpus en {indice_dir}/")
+
+    return {
+        "python": sys.version.split()[0],
+        "versiones": versiones,
+        "variables": estado_variables,
+        "indice_dir": indice_dir,
+        "indice_ok": indice_ok,
+        "problemas": problemas,
+        "listo": not problemas,
+    }
+
+
+def imprimir_resumen_gate2(estado: Dict[str, Any]) -> None:
+    """Imprime la verificación completa del entorno Gate 2 sin exponer claves."""
+    print("Python:", estado["python"])
+    for paquete, ver in estado["versiones"].items():
+        print(f"{paquete}: {ver}")
+    for nombre, flag in estado["variables"].items():
+        print(f"{nombre}: {flag}")
+    indice_dir = estado["indice_dir"]
+    print(f"indice en {indice_dir}/: {'ok' if estado['indice_ok'] else 'NO existe o esta vacio'}")
+    print()
+    if estado["problemas"]:
+        print("Pendiente: " + "; ".join(estado["problemas"]))
+    else:
+        print("Entorno listo para la corrida final")
+
+
 if __name__ == "__main__":
-    info = verificar_entorno_tuning()
-    imprimir_resumen_entorno(info)
+    solo_gate2 = "--gate2" in sys.argv
+    estado_gate2 = verificar_entorno_gate2()
+    imprimir_resumen_gate2(estado_gate2)
+    if not estado_gate2["listo"]:
+        sys.exit(1)
+    if not solo_gate2:
+        print()
+        info = verificar_entorno_tuning()
+        imprimir_resumen_entorno(info)

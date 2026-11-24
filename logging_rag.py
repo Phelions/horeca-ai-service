@@ -196,7 +196,7 @@ PATRONES_SOSPECHOSOS: list[str] = [
     r"ignore\s+(all\s+)?(previous|prior)\s+instructions",
     r"nuevo\s+(rol|sistema)\s*:",
     r"olvida\s+(tu\s+rol|todo|las\s+reglas)",
-    r"revela\s+(tu\s+)?(prompt\s+del\s+sistema|instrucciones)",
+    r"revela\s+(tu\s+)?(prompt(\s+del\s+sistema)?|instrucciones)",
     r"reveal\s+(your\s+)?(system\s+prompt|hidden\s+instructions)",
     r"<\s*/?\s*system\s*>",
     r"devuelve\s+(siempre|sin\s+excepci[oó]n).{0,40}(descuento|aprobado)",
@@ -302,14 +302,34 @@ def _invocar_generador(
     return generador_fn(pregunta, limpios)
 
 
+RESPUESTA_SIN_CONTEXTO = (
+    "No tengo información suficiente y verificada en los documentos HORECA para responder esto."
+)
+
+
+def extraer_texto_respuesta(respuesta: Any) -> str:
+    """Normaliza respuestas de AIMessage (str o bloques de Gemini) y strings planos."""
+    if isinstance(respuesta, str):
+        return respuesta
+    contenido = getattr(respuesta, "content", respuesta)
+    if isinstance(contenido, list):
+        partes = [
+            item.get("text", "") if isinstance(item, dict) else str(item)
+            for item in contenido
+        ]
+        return "".join(partes).strip()
+    return str(contenido)
+
+
 def procesar_consulta(
     pregunta: str,
     documentos: list[Any],
     generador_fn: Callable[..., Any] | None = None,
 ) -> dict[str, Any]:
     """Ejecuta una consulta HORECA con trace_id aislado, filtro anti-inyección y métricas de tokens."""
-    trace_id = uuid.uuid4().hex[:12]
-    token = trace_id_var.set(trace_id)
+    trace_existente = trace_id_var.get()
+    trace_id = trace_existente or uuid.uuid4().hex[:12]
+    token = None if trace_existente else trace_id_var.set(trace_id)
     try:
         logger.info(
             "consulta_recibida",
@@ -323,15 +343,27 @@ def procesar_consulta(
         )
         limpios = filtrar_documentos_sospechosos(documentos)
         descartados = len(documentos) - len(limpios)
+        fuentes = sorted({_extraer_campos_doc(d)[0] for d in limpios})
         mensajes = construir_mensajes_seguros(pregunta, limpios)
 
-        if generador_fn is None:
+        if not limpios:
+            logger.warning(
+                "sin_contexto_confiable",
+                extra={
+                    "datos": {
+                        "evento": "sin_contexto_confiable",
+                        "n_recuperados": len(documentos),
+                        "n_descartados": descartados,
+                    }
+                },
+            )
             respuesta = AIMessage(
-                content=(
-                    f"Consulta procesada con {len(limpios)} fuente(s) válidas [1]."
-                    if limpios
-                    else "No hay fuentes válidas tras filtrar el contexto; no puedo confirmar condiciones."
-                ),
+                content=RESPUESTA_SIN_CONTEXTO,
+                usage_metadata={"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            )
+        elif generador_fn is None:
+            respuesta = AIMessage(
+                content=f"Consulta procesada con {len(limpios)} fuente(s) válidas [1] ({', '.join(fuentes)}).",
                 usage_metadata={
                     "input_tokens": sum(len(str(m.content)) // 4 for m in mensajes),
                     "output_tokens": 18,
@@ -356,13 +388,16 @@ def procesar_consulta(
         return {
             "trace_id": trace_id,
             "respuesta": respuesta,
+            "respuesta_texto": extraer_texto_respuesta(respuesta),
+            "fuentes": fuentes,
             "consumo": consumo,
             "docs_limpios": limpios,
             "docs_descartados": descartados,
             "mensajes": mensajes,
         }
     finally:
-        trace_id_var.reset(token)
+        if token is not None:
+            trace_id_var.reset(token)
 
 
 def procesar_consulta_rag(
@@ -383,16 +418,20 @@ def procesar_consulta_rag(
         chat_model = obtener_chat_model()
 
     trace_id = uuid.uuid4().hex[:12]
-    handler = HandlerDeTrazasRAG()
-    config = {"callbacks": [handler], "metadata": {"trace_id": trace_id}}
-    docs_recuperados = retriever.invoke(pregunta, config=config)
+    token = trace_id_var.set(trace_id)
+    try:
+        handler = HandlerDeTrazasRAG()
+        config = {"callbacks": [handler], "metadata": {"trace_id": trace_id}}
+        docs_recuperados = retriever.invoke(pregunta, config=config)
 
-    def _llamar_modelo(_pregunta: str, _limpios: list[Any], mensajes: list[Any]) -> Any:
-        return chat_model.invoke(mensajes, config=config)
+        def _llamar_modelo(_pregunta: str, _limpios: list[Any], mensajes: list[Any]) -> Any:
+            return chat_model.invoke(mensajes, config=config)
 
-    resultado = procesar_consulta(pregunta, docs_recuperados, generador_fn=_llamar_modelo)
-    resultado["callback_eventos"] = handler.eventos
-    return resultado
+        resultado = procesar_consulta(pregunta, docs_recuperados, generador_fn=_llamar_modelo)
+        resultado["callback_eventos"] = handler.eventos
+        return resultado
+    finally:
+        trace_id_var.reset(token)
 
 
 if __name__ == "__main__":

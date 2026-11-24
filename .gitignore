@@ -20,6 +20,8 @@ htmlcov/
 chroma_db/
 vectorstore/
 vectorstore_ejemplo/
+vectorstore_gate2/
+indice_gate2/
 
 # Editores e IDEs
 .idea/
