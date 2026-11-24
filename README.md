@@ -356,6 +356,36 @@ En el marco de la Unidad 2.6 (Bloques 29 y 30 / Actividad Core), se exploró cu�
 
 ---
 
+## 🛡️ 7.5. Observabilidad, Seguridad y Gobernanza Técnica (Unidad 2.7 - Bloques 31 y 32)
+
+Se completó la instrumentación transversal de seguridad, trazabilidad y gobernanza técnica para la plataforma B2B **Horeca AI Service** (sin evidencia visual/capturas requerida; entrega íntegra por repositorio):
+
+- **`logging_rag.py` (Bloque 31 — Observabilidad y Defensa Anti-Inyección)**:
+  - Logs estructurados en formato **JSON** (`JsonFormatter`) correlacionados mediante `contextvars.ContextVar("trace_id")` con limpieza garantizada en `try/finally`.
+  - Protección de privacidad comercial: reemplaza texto crudo de consultas y catálogos por `huella(texto)` (SHA-256 corto) y longitudes (`pregunta_len`).
+  - Seguimiento de consumo (`registrar_consumo` con `usage_metadata` y `HandlerDeTrazasRAG` como `BaseCallbackHandler` de LangChain para correlación de `run_id`/`parent_run_id`).
+  - Defensa en 3 capas frente a inyección indirecta en catálogos de proveedores: separación `SystemMessage`/`HumanMessage`, delimitadores `<contexto_recuperado>` y filtro regex `filtrar_documentos_sospechosos` con eventos `documento_descartado_por_inyeccion`.
+- **`registro_prompts.py` (Bloque 32, Paso 1 — Versionado de Prompts)**:
+  - Registro inmutable con huella SHA-256 (`huella_prompt`), autoría, fecha, modelo y comparación línea a línea (`diff_prompts`) entre la versión base `v1` (`recuperacion.PROMPT_TEMPLATE`) y `v2` (`PROMPT_HORECA_RAG_V2` endurecido contra inyección).
+- **`grafo_supervision.py` (Bloque 32, Paso 2 — Compuerta HITL de Despliegue)**:
+  - Grafo LangGraph (`proponer -> supervisar -> aplicar`) con `InMemorySaver` e `interrupt()` antes de publicar cambios de prompt en producción, validación de estado pendiente en `resolver()`, hilos únicos (`nuevo_thread_id`) y pruebas de aprobación (`Command(resume=True)`) y rechazo (`Command(resume=False)`).
+- **`matriz_riesgos.py` (Bloque 32, Paso 3 — Matriz de Riesgos HORECA)**:
+  - Matriz evaluada (`puntaje_riesgo`, `categoria_riesgo`, `esta_en_el_limite`) con 7 riesgos propios del dominio HORECA B2B, alertas `[AL LIMITE]` en umbrales adyacentes, puntos de supervisión humana explícitos para cada riesgo `ALTO` o `CRITICO` y mitigaciones vinculadas a bloques construidos del proyecto (`Bloque 23`, `25`, `26`, `27`, `28`, `29`, `30`, `31` y `32`).
+- **`test_u27.py`**: Suite `pytest` sin llamadas externas que valida trazabilidad, privacidad en logs, consumo de tokens, filtro anti-inyección, callbacks, diffs de prompts, flujos de aprobación/rechazo LangGraph y criterios de la matriz de riesgos.
+
+```bash
+# Ejecutar scripts de demostración y validación de Unidad 2.7
+.venv/bin/python logging_rag.py
+.venv/bin/python registro_prompts.py
+.venv/bin/python grafo_supervision.py
+.venv/bin/python matriz_riesgos.py
+
+# Ejecutar pruebas automatizadas de la Unidad 2.7
+.venv/bin/pytest test_u27.py -v
+```
+
+---
+
 ## 🗺️ 8. Progresión de los 3 Gates (Hoja de Ruta)
 
 
